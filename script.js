@@ -1,20 +1,42 @@
-document.getElementById("invoice-form").addEventListener("submit", function (event) {
+document.getElementById("invoice-form").addEventListener("submit", async function (event) {
     event.preventDefault();
 
     const token = document.getElementById("token").value;
     const amount = document.getElementById("amount").value;
     const description = document.getElementById("description").value;
-    const stacksAddress = document.getElementById("stacks-address").value;
+    let stacksAddress = document.getElementById("stacks-address").value.trim();
 
     if (!token || !amount || !description || !stacksAddress) {
         alert("Please fill in all fields.");
         return;
     }
 
-    // Generar factura en pantalla
+    // Si es un BNS (flor.btc), buscar la dirección Stacks asociada
+    if (stacksAddress.endsWith(".btc")) {
+        stacksAddress = await resolveBNS(stacksAddress);
+        if (!stacksAddress) {
+            alert("Error: Could not resolve BNS address.");
+            return;
+        }
+    }
+
+    // Generar la factura en pantalla
     generateInvoiceOnScreen(token, amount, description, stacksAddress);
 });
 
+// Función para resolver BNS a dirección Stacks
+async function resolveBNS(bnsName) {
+    try {
+        const response = await fetch(`https://api.hiro.so/v1/names/${bnsName}`);
+        const data = await response.json();
+        return data.address || null;
+    } catch (error) {
+        console.error("BNS resolution error:", error);
+        return null;
+    }
+}
+
+// Función para generar la factura en pantalla
 function generateInvoiceOnScreen(token, amount, description, stacksAddress) {
     const canvas = document.getElementById("invoice-canvas");
     const ctx = canvas.getContext("2d");
@@ -26,31 +48,33 @@ function generateInvoiceOnScreen(token, amount, description, stacksAddress) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = "#000";
-    ctx.font = "24px Arial";
-    ctx.fillText("Stacks Invoice", 130, 80);
+    ctx.font = "26px Arial";
+    ctx.fillText("Stacks Invoice", 200, 60);
 
     ctx.font = "18px Arial";
-    ctx.fillText("Token: " + token.toUpperCase(), 20, 130);
-    ctx.fillText("Amount: " + amount, 20, 170);
-    ctx.fillText("Description: " + description, 20, 210);
-    
-    // Dirección Stacks ajustada para no cortarse
-    ctx.font = "16px Arial";
-    const maxWidth = 560; // Máximo ancho permitido para la dirección
-    wrapText(ctx, "Stacks Address: " + stacksAddress, 20, 250, maxWidth, 20);
+    ctx.fillText("Token:", 20, 110);
+    ctx.fillText(token.toUpperCase(), 150, 110);
+
+    ctx.fillText("Amount:", 20, 150);
+    ctx.fillText(amount, 150, 150);
+
+    ctx.fillText("Description:", 20, 190);
+    wrapText(ctx, description, 150, 190, 400, 20);
+
+    ctx.fillText("Stacks Address:", 20, 230);
+    wrapText(ctx, stacksAddress, 150, 230, 400, 20);
 
     // Generar QR solo con la dirección Stacks en texto plano
     const qrCanvas = document.createElement("canvas");
     QRCode.toCanvas(qrCanvas, stacksAddress, { width: 100 }, function (error) {
         if (error) console.error(error);
-        ctx.drawImage(qrCanvas, 400, 130, 120, 120);
+        ctx.drawImage(qrCanvas, 400, 100, 120, 120);
     });
 
     document.getElementById("invoice-container").style.display = "block";
 
     // Configurar botón "Pagar ahora"
-    const payNowButton = document.getElementById("pay-now");
-    payNowButton.onclick = function () {
+    document.getElementById("pay-now").onclick = function () {
         const paymentUrl = `stacks://wallet/send?recipient=${encodeURIComponent(stacksAddress)}&amount=${amount}&memo=${encodeURIComponent(description)}&token=${token}`;
         window.location.href = paymentUrl;
     };
@@ -64,7 +88,7 @@ function generateInvoiceOnScreen(token, amount, description, stacksAddress) {
     };
 }
 
-// Función para envolver texto si la dirección Stacks es larga
+// Función para envolver texto y evitar que se corte en la factura
 function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
     const words = text.split(" ");
     let line = "";
