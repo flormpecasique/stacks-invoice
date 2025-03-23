@@ -1,0 +1,133 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    color: #6a4ae4;
+    text-align: center;
+    font-size: 32px;
+    margin-bottom: 10px;
+    margin-top: 50px; /* Margen superior agregado */
+}
+
+p {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+label {
+    font-size: 14px;
+    color: #555;
+}
+
+input, select {
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button {
+    padding: 12px;
+    font-size: 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#generate-invoice {
+    background-color: #6a4ae4;
+    color: white;
+}
+
+#generate-invoice:hover {
+    background-color: #5b3bb8;
+}
+
+#invoice-container {
+    margin-top: 30px;
+}
+
+#invoice-canvas {
+    width: 100%;
+    height: auto;
+    margin: 20px 0;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#pay-now {
+    display: block;
+    margin: 10px auto;
+    background-color: #fc6532;
+    color: white;
+}
+
+#download-invoice {
+    display: block;
+    margin: 10px auto;
+    background-color: #6a4ae4;
+    color: white;
+}
+
+footer {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 14px;
+    color: #555;
+}
+
+/* Contenedor de botones */
+.buttons-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px; /* Espacio entre los botones */
+    margin-top: 20px;
+}
+
+/* Estilo para el botón Pay Now */
+#pay-now {
+    background-color: #fc6532; /* Naranja */
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    width: 150px; /* Ancho fijo */
+}
+
+/* Estilo para el botón Descargar factura */
+#download-invoice {
+    background-color: #e0e0e0; /* Gris claro */
+    color: #333;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    width: 150px; /* Ancho fijo */
+}
