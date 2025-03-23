@@ -1,137 +1,96 @@
-document.getElementById("generate-invoice").addEventListener("click", function () {
+document.getElementById("invoice-form").addEventListener("submit", async function (event) {
+    event.preventDefault();
+
     const token = document.getElementById("token").value;
-    const amount = document.getElementById("amount").value;
+    let amount = document.getElementById("amount").value.replace(",", "."); // Soporta decimales con "," o "."
     const description = document.getElementById("description").value;
-    const address = document.getElementById("address").value;
+    let stacksAddress = document.getElementById("stacks-address").value.trim();
 
-    if (!token || !amount || !address) {
-        alert("Please fill in all required fields.");
+    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+        alert("Enter a valid amount.");
         return;
     }
 
-    // Obtener la dirección Stacks si se ingresó un BNS
-    fetch(`https://api.hiro.so/v1/names/${address}`)
-        .then(response => response.json())
-        .then(data => {
-            const stacksAddress = data.address || address; // Si no es BNS, usa la dirección tal cual
-
-            // Mostrar la factura en pantalla
-            const invoiceHtml = `
-                <h2>Stacks Invoice</h2>
-                <p><strong>Token:</strong> ${token}</p>
-                <p><strong>Amount:</strong> ${amount}</p>
-                <p><strong>Description:</strong><br>${description}</p>
-                <p><strong>Address:</strong><br>${stacksAddress}</p>
-                <div id="qrcode"></div>
-            `;
-            document.getElementById("invoice-container").innerHTML = invoiceHtml;
-
-            // Generar el código QR con la dirección Stacks sin enlaces
-            const qrCodeDiv = document.getElementById("qrcode");
-            qrCodeDiv.innerHTML = "";
-            new QRCode(qrCodeDiv, {
-                text: stacksAddress,
-                width: 180,
-                height: 180,
-            });
-
-            // Guardar datos para la descarga de imagen
-            document.getElementById("download-invoice").dataset.invoice = JSON.stringify({
-                token,
-                amount,
-                description,
-                address: stacksAddress
-            });
-        })
-        .catch(() => alert("Failed to resolve BNS. Please enter a valid Stacks address or BNS."));
-});
-
-// Descargar la factura en imagen
-document.getElementById("download-invoice").addEventListener("click", function () {
-    const data = JSON.parse(this.dataset.invoice || "{}");
-
-    if (!data.token || !data.amount || !data.address) {
-        alert("Generate the invoice first.");
-        return;
-    }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = 500;
-    canvas.height = 700;
-    const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#000";
-    ctx.font = "bold 24px Arial";
-    ctx.fillText("Stacks Invoice", 20, 50);
-
-    ctx.font = "18px Arial";
-    ctx.fillText(`Token: ${data.token}`, 20, 100);
-    ctx.fillText(`Amount: ${data.amount}`, 20, 140);
-    ctx.fillText("Description:", 20, 180);
-    ctx.fillText(data.description, 20, 210);
-    ctx.fillText("Address:", 20, 250);
-
-    // Ajustar dirección en varias líneas si es larga
-    const addressLines = splitTextIntoLines(ctx, data.address, 450);
-    addressLines.forEach((line, i) => {
-        ctx.fillText(line, 20, 280 + i * 25);
-    });
-
-    // Generar QR en canvas
-    const qrCanvas = document.createElement("canvas");
-    new QRCode(qrCanvas, {
-        text: data.address,
-        width: 180,
-        height: 180,
-    });
-
-    const qrImg = new Image();
-    qrImg.src = qrCanvas.toDataURL("image/png");
-    qrImg.onload = function () {
-        ctx.drawImage(qrImg, 160, 350, 180, 180);
-        const img = canvas.toDataURL("image/png");
-        const link = document.createElement("a");
-        link.href = img;
-        link.download = `invoice_${data.address}.png`;
-        link.click();
-    };
-});
-
-// Función para dividir texto largo en líneas ajustadas al ancho
-function splitTextIntoLines(ctx, text, maxWidth) {
-    const words = text.split(" ");
-    let lines = [];
-    let currentLine = "";
-
-    for (let word of words) {
-        let testLine = currentLine ? `${currentLine} ${word}` : word;
-        let testWidth = ctx.measureText(testLine).width;
-
-        if (testWidth > maxWidth) {
-            lines.push(currentLine);
-            currentLine = word;
-        } else {
-            currentLine = testLine;
+    // Convertir BNS a dirección Stacks (insensible a mayúsculas)
+    if (stacksAddress.endsWith(".btc")) {
+        try {
+            const response = await fetch(`https://api.hiro.so/v1/names/${stacksAddress.toLowerCase()}`);
+            const data = await response.json();
+            if (data.address) {
+                stacksAddress = data.address;
+            } else {
+                alert("Invalid BNS name.");
+                return;
+            }
+        } catch (error) {
+            alert("Error resolving BNS.");
+            return;
         }
     }
-    if (currentLine) lines.push(currentLine);
+
+    generateInvoice(token, amount, description, stacksAddress);
+});
+
+function generateInvoice(token, amount, description, stacksAddress) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 400;
+    canvas.height = 600;
+    const ctx = canvas.getContext("2d");
+
+    // Estilos de texto
+    ctx.fillStyle = "#000";
+    ctx.font = "20px Arial";
+    ctx.textAlign = "left";
+
+    // Título
+    ctx.font = "bold 24px Arial";
+    ctx.fillText("Stacks Invoice", 120, 50);
+
+    // Datos alineados
+    ctx.font = "18px Arial";
+    ctx.fillText(`Token: ${token}`, 30, 100);
+    ctx.fillText(`Amount: ${amount}`, 30, 140);
+    ctx.fillText(`Description: ${description}`, 30, 180);
+
+    // Dirección completa, con ajuste de líneas si es muy larga
+    const maxWidth = 340;
+    const addressLines = breakText(ctx, `Address: ${stacksAddress}`, maxWidth);
+    addressLines.forEach((line, index) => {
+        ctx.fillText(line, 30, 220 + index * 30);
+    });
+
+    // QR centrado
+    const qrCanvas = document.createElement("canvas");
+    QRCode.toCanvas(qrCanvas, stacksAddress, { width: 200 }, function (error) {
+        if (error) console.error(error);
+        ctx.drawImage(qrCanvas, 100, 300);
+        downloadInvoice(canvas);
+    });
+}
+
+// Función para dividir texto largo en líneas
+function breakText(ctx, text, maxWidth) {
+    const words = text.split(" ");
+    let lines = [];
+    let line = "";
+    for (let word of words) {
+        let testLine = line + word + " ";
+        let testWidth = ctx.measureText(testLine).width;
+        if (testWidth > maxWidth) {
+            lines.push(line);
+            line = word + " ";
+        } else {
+            line = testLine;
+        }
+    }
+    lines.push(line);
     return lines;
 }
 
-// Botón de pago con Xverse o Leather
-document.getElementById("pay-now").addEventListener("click", function () {
-    const address = document.getElementById("address").value;
-    const amount = document.getElementById("amount").value;
-    const token = document.getElementById("token").value;
-
-    if (!address || !amount || !token) {
-        alert("Generate the invoice first.");
-        return;
-    }
-
-    // Construir la URL de pago
-    const paymentUrl = `https://www.hiro.so/wallet/send?recipient=${address}&amount=${amount}&token=${token}`;
-    window.open(paymentUrl, "_blank");
-});
+// Descargar imagen
+function downloadInvoice(canvas) {
+    const link = document.createElement("a");
+    link.download = "stacks-invoice.png";
+    link.href = canvas.toDataURL();
+    link.click();
+}
