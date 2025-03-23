@@ -1,108 +1,137 @@
-document.getElementById("invoice-form").addEventListener("submit", async function (event) {
-    event.preventDefault();
-
+document.getElementById("generate-invoice").addEventListener("click", function () {
     const token = document.getElementById("token").value;
     const amount = document.getElementById("amount").value;
     const description = document.getElementById("description").value;
-    let stacksAddress = document.getElementById("stacks-address").value.trim();
+    const address = document.getElementById("address").value;
 
-    if (!token || !amount || !description || !stacksAddress) {
-        alert("Please fill in all fields.");
+    if (!token || !amount || !address) {
+        alert("Please fill in all required fields.");
         return;
     }
 
-    // Si es un BNS (flor.btc), buscar la dirección Stacks asociada
-    if (stacksAddress.endsWith(".btc")) {
-        stacksAddress = await resolveBNS(stacksAddress);
-        if (!stacksAddress) {
-            alert("Error: Could not resolve BNS address.");
-            return;
-        }
-    }
+    // Obtener la dirección Stacks si se ingresó un BNS
+    fetch(`https://api.hiro.so/v1/names/${address}`)
+        .then(response => response.json())
+        .then(data => {
+            const stacksAddress = data.address || address; // Si no es BNS, usa la dirección tal cual
 
-    // Generar la factura en pantalla
-    generateInvoiceOnScreen(token, amount, description, stacksAddress);
+            // Mostrar la factura en pantalla
+            const invoiceHtml = `
+                <h2>Stacks Invoice</h2>
+                <p><strong>Token:</strong> ${token}</p>
+                <p><strong>Amount:</strong> ${amount}</p>
+                <p><strong>Description:</strong><br>${description}</p>
+                <p><strong>Address:</strong><br>${stacksAddress}</p>
+                <div id="qrcode"></div>
+            `;
+            document.getElementById("invoice-container").innerHTML = invoiceHtml;
+
+            // Generar el código QR con la dirección Stacks sin enlaces
+            const qrCodeDiv = document.getElementById("qrcode");
+            qrCodeDiv.innerHTML = "";
+            new QRCode(qrCodeDiv, {
+                text: stacksAddress,
+                width: 180,
+                height: 180,
+            });
+
+            // Guardar datos para la descarga de imagen
+            document.getElementById("download-invoice").dataset.invoice = JSON.stringify({
+                token,
+                amount,
+                description,
+                address: stacksAddress
+            });
+        })
+        .catch(() => alert("Failed to resolve BNS. Please enter a valid Stacks address or BNS."));
 });
 
-// Función para resolver BNS a dirección Stacks
-async function resolveBNS(bnsName) {
-    try {
-        const response = await fetch(`https://api.hiro.so/v1/names/${bnsName}`);
-        const data = await response.json();
-        return data.address || null;
-    } catch (error) {
-        console.error("BNS resolution error:", error);
-        return null;
+// Descargar la factura en imagen
+document.getElementById("download-invoice").addEventListener("click", function () {
+    const data = JSON.parse(this.dataset.invoice || "{}");
+
+    if (!data.token || !data.amount || !data.address) {
+        alert("Generate the invoice first.");
+        return;
     }
-}
 
-// Función para generar la factura en pantalla
-function generateInvoiceOnScreen(token, amount, description, stacksAddress) {
-    const canvas = document.getElementById("invoice-canvas");
+    const canvas = document.createElement("canvas");
+    canvas.width = 500;
+    canvas.height = 700;
     const ctx = canvas.getContext("2d");
-
-    canvas.width = 600;
-    canvas.height = 400;
 
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     ctx.fillStyle = "#000";
-    ctx.font = "26px Arial";
-    ctx.fillText("Stacks Invoice", 200, 60);
+    ctx.font = "bold 24px Arial";
+    ctx.fillText("Stacks Invoice", 20, 50);
 
     ctx.font = "18px Arial";
-    ctx.fillText("Token:", 20, 110);
-    ctx.fillText(token.toUpperCase(), 150, 110);
+    ctx.fillText(`Token: ${data.token}`, 20, 100);
+    ctx.fillText(`Amount: ${data.amount}`, 20, 140);
+    ctx.fillText("Description:", 20, 180);
+    ctx.fillText(data.description, 20, 210);
+    ctx.fillText("Address:", 20, 250);
 
-    ctx.fillText("Amount:", 20, 150);
-    ctx.fillText(amount, 150, 150);
-
-    ctx.fillText("Description:", 20, 190);
-    wrapText(ctx, description, 150, 190, 400, 20);
-
-    ctx.fillText("Stacks Address:", 20, 230);
-    wrapText(ctx, stacksAddress, 150, 230, 400, 20);
-
-    // Generar QR solo con la dirección Stacks en texto plano
-    const qrCanvas = document.createElement("canvas");
-    QRCode.toCanvas(qrCanvas, stacksAddress, { width: 100 }, function (error) {
-        if (error) console.error(error);
-        ctx.drawImage(qrCanvas, 400, 100, 120, 120);
+    // Ajustar dirección en varias líneas si es larga
+    const addressLines = splitTextIntoLines(ctx, data.address, 450);
+    addressLines.forEach((line, i) => {
+        ctx.fillText(line, 20, 280 + i * 25);
     });
 
-    document.getElementById("invoice-container").style.display = "block";
+    // Generar QR en canvas
+    const qrCanvas = document.createElement("canvas");
+    new QRCode(qrCanvas, {
+        text: data.address,
+        width: 180,
+        height: 180,
+    });
 
-    // Configurar botón "Pagar ahora"
-    document.getElementById("pay-now").onclick = function () {
-        const paymentUrl = `stacks://wallet/send?recipient=${encodeURIComponent(stacksAddress)}&amount=${amount}&memo=${encodeURIComponent(description)}&token=${token}`;
-        window.location.href = paymentUrl;
-    };
-
-    // Configurar botón "Descargar factura"
-    document.getElementById("download-invoice").onclick = function () {
+    const qrImg = new Image();
+    qrImg.src = qrCanvas.toDataURL("image/png");
+    qrImg.onload = function () {
+        ctx.drawImage(qrImg, 160, 350, 180, 180);
+        const img = canvas.toDataURL("image/png");
         const link = document.createElement("a");
-        link.download = "stacks-invoice.png";
-        link.href = canvas.toDataURL();
+        link.href = img;
+        link.download = `invoice_${data.address}.png`;
         link.click();
     };
-}
+});
 
-// Función para envolver texto y evitar que se corte en la factura
-function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+// Función para dividir texto largo en líneas ajustadas al ancho
+function splitTextIntoLines(ctx, text, maxWidth) {
     const words = text.split(" ");
-    let line = "";
-    for (let i = 0; i < words.length; i++) {
-        const testLine = line + words[i] + " ";
-        const metrics = ctx.measureText(testLine);
-        const testWidth = metrics.width;
-        if (testWidth > maxWidth && i > 0) {
-            ctx.fillText(line, x, y);
-            line = words[i] + " ";
-            y += lineHeight;
+    let lines = [];
+    let currentLine = "";
+
+    for (let word of words) {
+        let testLine = currentLine ? `${currentLine} ${word}` : word;
+        let testWidth = ctx.measureText(testLine).width;
+
+        if (testWidth > maxWidth) {
+            lines.push(currentLine);
+            currentLine = word;
         } else {
-            line = testLine;
+            currentLine = testLine;
         }
     }
-    ctx.fillText(line, x, y);
+    if (currentLine) lines.push(currentLine);
+    return lines;
 }
+
+// Botón de pago con Xverse o Leather
+document.getElementById("pay-now").addEventListener("click", function () {
+    const address = document.getElementById("address").value;
+    const amount = document.getElementById("amount").value;
+    const token = document.getElementById("token").value;
+
+    if (!address || !amount || !token) {
+        alert("Generate the invoice first.");
+        return;
+    }
+
+    // Construir la URL de pago
+    const paymentUrl = `https://www.hiro.so/wallet/send?recipient=${address}&amount=${amount}&token=${token}`;
+    window.open(paymentUrl, "_blank");
+});
