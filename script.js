@@ -1,126 +1,84 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("invoice-form");
-    const invoiceContainer = document.getElementById("invoice-container");
-    const invoiceCanvas = document.getElementById("invoice-canvas");
-    const payNowButton = document.getElementById("pay-now");
-    const downloadButton = document.getElementById("download-invoice");
+document.getElementById("invoice-form").addEventListener("submit", function (event) {
+    event.preventDefault();
 
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+    const token = document.getElementById("token").value;
+    const amount = document.getElementById("amount").value;
+    const description = document.getElementById("description").value;
+    const stacksAddress = document.getElementById("stacks-address").value;
 
-        // Obtener valores del formulario
-        const token = document.getElementById("token").value.toUpperCase();
-        const amount = document.getElementById("amount").value;
-        const description = document.getElementById("description").value;
-        const stacksAddress = document.getElementById("stacks-address").value;
+    if (!token || !amount || !description || !stacksAddress) {
+        alert("Please fill in all fields.");
+        return;
+    }
 
-        if (!token || !amount || !description || !stacksAddress) {
-            alert("Please fill in all fields.");
-            return;
-        }
+    // Generar factura en pantalla
+    generateInvoiceOnScreen(token, amount, description, stacksAddress);
+});
 
-        // Crear el enlace de pago con codificación adecuada
-        const paymentLink = `stacks://wallet/send?recipient=${encodeURIComponent(stacksAddress)}&amount=${encodeURIComponent(amount)}&memo=${encodeURIComponent(description)}&token=${encodeURIComponent(token)}`;
-        console.log("Payment Link:", paymentLink);
+function generateInvoiceOnScreen(token, amount, description, stacksAddress) {
+    const canvas = document.getElementById("invoice-canvas");
+    const ctx = canvas.getContext("2d");
 
-        // Generar código QR con mejor tamaño para móviles
-        try {
-            await QRCode.toCanvas(invoiceCanvas, paymentLink, {
-                width: 300,
-                margin: 1
-            });
-        } catch (error) {
-            console.error("Error generating QR Code:", error);
-            alert("Failed to generate QR code.");
-            return;
-        }
+    canvas.width = 600;
+    canvas.height = 400;
 
-        // Mostrar la factura
-        invoiceContainer.style.display = "block";
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Asegurar que el botón "Pay Now" redirija correctamente en móvil y escritorio
-        payNowButton.onclick = () => {
-            window.location.href = paymentLink; // Para móviles
-            window.open(paymentLink, "_blank"); // Para escritorio
-        };
+    ctx.fillStyle = "#000";
+    ctx.font = "24px Arial";
+    ctx.fillText("Stacks Invoice", 130, 80);
 
-        // Configurar la descarga de la factura
-        downloadButton.onclick = () => {
-            downloadInvoice(token, amount, description, stacksAddress, paymentLink);
-        };
+    ctx.font = "18px Arial";
+    ctx.fillText("Token: " + token.toUpperCase(), 20, 130);
+    ctx.fillText("Amount: " + amount, 20, 170);
+    ctx.fillText("Description: " + description, 20, 210);
+    
+    // Dirección Stacks ajustada para no cortarse
+    ctx.font = "16px Arial";
+    const maxWidth = 560; // Máximo ancho permitido para la dirección
+    wrapText(ctx, "Stacks Address: " + stacksAddress, 20, 250, maxWidth, 20);
+
+    // Generar QR solo con la dirección Stacks en texto plano
+    const qrCanvas = document.createElement("canvas");
+    QRCode.toCanvas(qrCanvas, stacksAddress, { width: 100 }, function (error) {
+        if (error) console.error(error);
+        ctx.drawImage(qrCanvas, 400, 130, 120, 120);
     });
 
-    // Función para descargar la factura como imagen
-    function downloadInvoice(token, amount, description, stacksAddress, paymentLink) {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
+    document.getElementById("invoice-container").style.display = "block";
 
-        canvas.width = 400;
-        canvas.height = 550; // Más espacio para direcciones largas
+    // Configurar botón "Pagar ahora"
+    const payNowButton = document.getElementById("pay-now");
+    payNowButton.onclick = function () {
+        const paymentUrl = `stacks://wallet/send?recipient=${encodeURIComponent(stacksAddress)}&amount=${amount}&memo=${encodeURIComponent(description)}&token=${token}`;
+        window.location.href = paymentUrl;
+    };
 
-        // Fondo blanco
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Configurar botón "Descargar factura"
+    document.getElementById("download-invoice").onclick = function () {
+        const link = document.createElement("a");
+        link.download = "stacks-invoice.png";
+        link.href = canvas.toDataURL();
+        link.click();
+    };
+}
 
-        // Título con margen superior mejorado
-        ctx.fillStyle = "#000";
-        ctx.font = "bold 20px Arial";
-        ctx.fillText("Stacks Invoice", 130, 60);
-
-        // Datos alineados
-        ctx.font = "16px Arial";
-        ctx.fillText(`Token: ${token}`, 30, 100);
-        ctx.fillText(`Amount: ${amount}`, 30, 130);
-        ctx.fillText("Description:", 30, 160);
-        ctx.fillText(description, 30, 180);
-
-        // Dirección dividida en varias líneas automáticamente
-        ctx.fillText("Address:", 30, 210);
-        let addressLines = splitText(ctx, stacksAddress, 340); // Ajusta según el ancho disponible
-        addressLines.forEach((line, index) => {
-            ctx.fillText(line, 30, 230 + index * 20);
-        });
-
-        // Ajustar altura si la dirección es muy larga
-        canvas.height += addressLines.length * 20;
-
-        // Dibujar el código QR con más espacio
-        const qrCanvas = document.createElement("canvas");
-        QRCode.toCanvas(qrCanvas, paymentLink, {
-            width: 180,
-            margin: 2
-        }, function () {
-            ctx.drawImage(qrCanvas, 110, 300 + addressLines.length * 10, 180, 180);
-            
-            // Descargar la factura
-            const link = document.createElement("a");
-            link.download = `invoice_${stacksAddress}.png`;
-            link.href = canvas.toDataURL("image/png");
-            link.click();
-        });
-    }
-
-    // Función para dividir texto largo en líneas dentro de un ancho máximo
-    function splitText(ctx, text, maxWidth) {
-        let words = text.split(" ");
-        let lines = [];
-        let currentLine = "";
-
-        words.forEach(word => {
-            let testLine = currentLine + (currentLine ? " " : "") + word;
-            let testWidth = ctx.measureText(testLine).width;
-            if (testWidth > maxWidth) {
-                lines.push(currentLine);
-                currentLine = word;
-            } else {
-                currentLine = testLine;
-            }
-        });
-
-        if (currentLine) {
-            lines.push(currentLine);
+// Función para envolver texto si la dirección Stacks es larga
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+    const words = text.split(" ");
+    let line = "";
+    for (let i = 0; i < words.length; i++) {
+        const testLine = line + words[i] + " ";
+        const metrics = ctx.measureText(testLine);
+        const testWidth = metrics.width;
+        if (testWidth > maxWidth && i > 0) {
+            ctx.fillText(line, x, y);
+            line = words[i] + " ";
+            y += lineHeight;
+        } else {
+            line = testLine;
         }
-
-        return lines;
     }
-});
+    ctx.fillText(line, x, y);
+}
