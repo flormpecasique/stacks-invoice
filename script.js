@@ -49,15 +49,15 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
 
     // Estilos de texto  
     ctx.fillStyle = "#000";  
-    ctx.font = "14px Arial";  
+    ctx.font = "12px Arial";  
     ctx.textAlign = "left";  
 
     // Título con margen superior  
-    ctx.font = "bold 20px Arial";  
+    ctx.font = "bold 18px Arial";  
     ctx.fillText("Stacks Invoice", 120, 50);  
 
     // Datos alineados arriba  
-    ctx.font = "14px Arial";  
+    ctx.font = "12px Arial";  
     ctx.fillText(`Token: ${token}`, 30, 100);  
     ctx.fillText(`Amount: ${amount}`, 30, 140);  
     ctx.fillText(`Description:`, 30, 180);  
