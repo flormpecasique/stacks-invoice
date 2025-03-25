@@ -49,26 +49,31 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
 
     // Estilos de texto
     ctx.fillStyle = "#000";
-    ctx.font = "20px Arial";
+    ctx.font = "14px Arial"; // Tamaño de fuente reducido
     ctx.textAlign = "left";
 
     // Título con margen superior
-    ctx.font = "bold 24px Arial";
+    ctx.font = "bold 20px Arial"; // Mantener el título más grande
     ctx.fillText("Stacks Invoice", 120, 50);
 
-    // Datos alineados arriba
-    ctx.font = "18px Arial";
+    // Datos alineados arriba con fuente más pequeña
+    ctx.font = "14px Arial";
     ctx.fillText(`Token: ${token}`, 30, 100);
-    ctx.fillText(`Amount: ${amount}`, 30, 140);
-    ctx.fillText(`Description:`, 30, 180);
-    ctx.fillText(description, 30, 210);
+    ctx.fillText(`Amount: ${amount}`, 30, 130);
+    ctx.fillText(`Description:`, 30, 160);
 
-    // Dirección Stacks + BNS en paréntesis
-    const fullAddress = bnsName ? `${stacksAddress} (${bnsName})` : stacksAddress;
+    // Dividir descripción en líneas si es necesario
     const maxWidth = 340;
+    const descriptionLines = breakText(ctx, description, maxWidth);
+    descriptionLines.forEach((line, index) => {
+        ctx.fillText(line, 30, 185 + index * 20);
+    });
+
+    // Dirección Stacks con salto de línea
+    const fullAddress = bnsName ? `${stacksAddress} (${bnsName})` : stacksAddress;
     const addressLines = breakText(ctx, `Address: ${fullAddress}`, maxWidth);
     addressLines.forEach((line, index) => {
-        ctx.fillText(line, 30, 250 + index * 30);
+        ctx.fillText(line, 30, 250 + index * 20);
     });
 
     try {
