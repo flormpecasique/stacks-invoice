@@ -112,4 +112,4 @@ function breakText(ctx, text, maxWidth) {
     }
     lines.push(line);
     return lines;
-            }
+}
