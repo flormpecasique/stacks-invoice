@@ -102,7 +102,7 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
         downloadBtn.onclick = function () {  
             const link = document.createElement("a");  
             link.download = "stacks-invoice.png";  
-            link.href = img.src;  
+            link.href = img.src;  // Usa la misma imagen generada
             link.click();  
         };  
 
