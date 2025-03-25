@@ -1,38 +1,3 @@
-document.getElementById("invoice-form").addEventListener("submit", async function (event) {
-    event.preventDefault();
-
-    const token = document.getElementById("token").value;
-    let amount = document.getElementById("amount").value.replace(",", "."); // Soporta decimales con "," o "."
-    const description = document.getElementById("description").value;
-    let stacksAddress = document.getElementById("stacks-address").value.trim();
-    let bnsName = ""; // Variable para guardar el BNS si se usa
-
-    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
-        alert("Enter a valid amount.");
-        return;
-    }
-
-    // Convertir BNS a dirección Stacks (insensible a mayúsculas)
-    if (stacksAddress.endsWith(".btc")) {
-        try {
-            const response = await fetch(`https://api.hiro.so/v1/names/${stacksAddress.toLowerCase()}`);
-            const data = await response.json();
-            if (data.address) {
-                bnsName = stacksAddress; // Guardar el BNS
-                stacksAddress = data.address;
-            } else {
-                alert("Invalid BNS name.");
-                return;
-            }
-        } catch (error) {
-            alert("Error resolving BNS.");
-            return;
-        }
-    }
-
-    await generateInvoice(token, amount, description, stacksAddress, bnsName);
-});
-
 async function generateInvoice(token, amount, description, stacksAddress, bnsName) {
     const invoiceContainer = document.getElementById("invoice-container");
     invoiceContainer.style.display = "block"; // Mostrar el contenedor
@@ -49,7 +14,7 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
 
     // Estilos de texto
     ctx.fillStyle = "#000";
-    ctx.font = "16px Arial"; // Fuente más pequeña
+    ctx.font = "16px Arial";
     ctx.textAlign = "left";
 
     // Título con margen superior
@@ -67,8 +32,11 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
     const fullAddress = bnsName ? `${stacksAddress} (${bnsName})` : stacksAddress;
     const maxWidth = 340;
     const addressLines = breakText(ctx, `Address: ${fullAddress}`, maxWidth);
+
+    // Ajustar posición para evitar que la dirección se superponga con la descripción
+    let addressY = 250;
     addressLines.forEach((line, index) => {
-        ctx.fillText(line, 30, 250 + index * 25);
+        ctx.fillText(line, 30, addressY + index * 20); // Espaciado más compacto
     });
 
     try {
@@ -114,61 +82,4 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
         console.error("Error generating QR code:", error);
         alert("Error generating QR code. Please try again.");
     }
-}
-
-// Función para compartir la factura
-function shareInvoice(imageUrl) {
-    if (navigator.share) {
-        // Compartir usando la API nativa de Web Share
-        navigator.share({
-            title: "Stacks Invoice",
-            text: "Here is your Stacks invoice!",
-            url: imageUrl
-        }).catch((error) => console.error("Error sharing:", error));
-    } else {
-        // Si el navegador no soporta Web Share, copiar la imagen
-        copyImageToClipboard(imageUrl);
-        alert("Invoice image copied! Paste it in your social media or email.");
-    }
-}
-
-// Función para copiar la imagen al portapapeles (solo en navegadores compatibles)
-async function copyImageToClipboard(imageUrl) {
-    try {
-        const response = await fetch(imageUrl);
-        const blob = await response.blob();
-        const clipboardItem = new ClipboardItem({ "image/png": blob });
-        await navigator.clipboard.write([clipboardItem]);
-    } catch (error) {
-        console.error("Error copying image:", error);
-    }
-}
-
-// Función para generar un código QR y devolverlo como un canvas
-function generateQRCode(data) {
-    return new Promise((resolve, reject) => {
-        QRCode.toCanvas(data, { width: 200 }, function (error, qrCanvas) {
-            if (error) reject(error);
-            else resolve(qrCanvas);
-        });
-    });
-}
-
-// Función para dividir texto largo en líneas dentro del canvas
-function breakText(ctx, text, maxWidth) {
-    const words = text.split(" ");
-    let lines = [];
-    let line = "";
-    for (let word of words) {
-        let testLine = line + word + " ";
-        let testWidth = ctx.measureText(testLine).width;
-        if (testWidth > maxWidth) {
-            lines.push(line);
-            line = word + " ";
-        } else {
-            line = testLine;
-        }
-    }
-    lines.push(line);
-    return lines;
 }
