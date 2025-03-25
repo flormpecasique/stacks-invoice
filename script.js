@@ -49,31 +49,26 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
 
     // Estilos de texto
     ctx.fillStyle = "#000";
-    ctx.font = "14px Arial"; // Tamaño de fuente reducido
+    ctx.font = "16px Arial"; // Fuente más pequeña
     ctx.textAlign = "left";
 
     // Título con margen superior
-    ctx.font = "bold 20px Arial"; // Mantener el título más grande
+    ctx.font = "bold 22px Arial";
     ctx.fillText("Stacks Invoice", 120, 50);
 
-    // Datos alineados arriba con fuente más pequeña
-    ctx.font = "14px Arial";
+    // Datos alineados arriba
+    ctx.font = "16px Arial";
     ctx.fillText(`Token: ${token}`, 30, 100);
-    ctx.fillText(`Amount: ${amount}`, 30, 130);
-    ctx.fillText(`Description:`, 30, 160);
+    ctx.fillText(`Amount: ${amount}`, 30, 140);
+    ctx.fillText(`Description:`, 30, 180);
+    ctx.fillText(description, 30, 210);
 
-    // Dividir descripción en líneas si es necesario
-    const maxWidth = 340;
-    const descriptionLines = breakText(ctx, description, maxWidth);
-    descriptionLines.forEach((line, index) => {
-        ctx.fillText(line, 30, 185 + index * 20);
-    });
-
-    // Dirección Stacks con salto de línea
+    // Dirección Stacks + BNS en paréntesis
     const fullAddress = bnsName ? `${stacksAddress} (${bnsName})` : stacksAddress;
+    const maxWidth = 340;
     const addressLines = breakText(ctx, `Address: ${fullAddress}`, maxWidth);
     addressLines.forEach((line, index) => {
-        ctx.fillText(line, 30, 250 + index * 20);
+        ctx.fillText(line, 30, 250 + index * 25);
     });
 
     try {
@@ -91,12 +86,12 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
         const buttonsContainer = document.createElement("div");
         buttonsContainer.className = "buttons-container"; // Usa la clase del CSS
 
-        // Botón Pay Now
-        const payNowBtn = document.createElement("button");
-        payNowBtn.textContent = "Pay Now";
-        payNowBtn.id = "pay-now";
-        payNowBtn.onclick = function () {
-            window.open(`https://wallet.hiro.so/send?recipient=${stacksAddress}&amount=${amount}&token=${token}`, "_blank");
+        // Botón Share (antes Pay Now)
+        const shareBtn = document.createElement("button");
+        shareBtn.textContent = "Share";
+        shareBtn.id = "pay-now"; // Mantener el ID para conservar estilos
+        shareBtn.onclick = function () {
+            shareInvoice(img.src);
         };
 
         // Botón Descargar imagen
@@ -106,18 +101,46 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
         downloadBtn.onclick = function () {
             const link = document.createElement("a");
             link.download = "stacks-invoice.png";
-            link.href = canvas.toDataURL();
+            link.href = img.src;
             link.click();
         };
 
         // Agregar botones al contenedor y luego al invoiceContainer
-        buttonsContainer.appendChild(payNowBtn);
+        buttonsContainer.appendChild(shareBtn);
         buttonsContainer.appendChild(downloadBtn);
         invoiceContainer.appendChild(buttonsContainer);
 
     } catch (error) {
         console.error("Error generating QR code:", error);
         alert("Error generating QR code. Please try again.");
+    }
+}
+
+// Función para compartir la factura
+function shareInvoice(imageUrl) {
+    if (navigator.share) {
+        // Compartir usando la API nativa de Web Share
+        navigator.share({
+            title: "Stacks Invoice",
+            text: "Here is your Stacks invoice!",
+            url: imageUrl
+        }).catch((error) => console.error("Error sharing:", error));
+    } else {
+        // Si el navegador no soporta Web Share, copiar la imagen
+        copyImageToClipboard(imageUrl);
+        alert("Invoice image copied! Paste it in your social media or email.");
+    }
+}
+
+// Función para copiar la imagen al portapapeles (solo en navegadores compatibles)
+async function copyImageToClipboard(imageUrl) {
+    try {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const clipboardItem = new ClipboardItem({ "image/png": blob });
+        await navigator.clipboard.write([clipboardItem]);
+    } catch (error) {
+        console.error("Error copying image:", error);
     }
 }
 
