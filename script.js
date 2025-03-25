@@ -92,7 +92,7 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
         shareBtn.textContent = "Share";  
         shareBtn.id = "pay-now";  
         shareBtn.onclick = function () {  
-            shareInvoice(img.src);  
+            shareInvoice(img.src);  // Comparte la imagen de la factura
         };  
 
         // Botón Descargar imagen  
@@ -120,11 +120,17 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
 // Función para compartir la factura  
 function shareInvoice(imageUrl) {  
     if (navigator.share) {  
-        navigator.share({  
-            title: "Stacks Invoice",  
-            text: "Here is your Stacks invoice!",  
-            url: imageUrl  
-        }).catch((error) => console.error("Error sharing:", error));  
+        fetch(imageUrl)
+            .then(response => response.blob())
+            .then(blob => {
+                const file = new File([blob], "stacks-invoice.png", { type: "image/png" });
+                navigator.share({
+                    title: "Stacks Invoice",
+                    text: "Here is your Stacks invoice!",
+                    files: [file]
+                }).catch((error) => console.error("Error sharing:", error));
+            })
+            .catch(error => console.error("Error fetching the image:", error));
     } else {  
         copyImageToClipboard(imageUrl);  
         alert("Invoice image copied! Paste it in your social media or email.");  
@@ -170,4 +176,4 @@ function breakText(ctx, text, maxWidth) {
     }  
     lines.push(line);  
     return lines;  
-                }
+}
