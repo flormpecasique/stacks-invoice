@@ -2,7 +2,7 @@ document.getElementById("invoice-form").addEventListener("submit", async functio
     event.preventDefault();
 
     const token = document.getElementById("token").value;
-    let amount = document.getElementById("amount").value.replace(",", "."); // Soporta decimales con "," o "."
+    let amount = document.getElementById("amount").value.replace(",", "."); // Permite "," o "."
     const description = document.getElementById("description").value;
     let stacksAddress = document.getElementById("stacks-address").value.trim();
 
@@ -11,7 +11,7 @@ document.getElementById("invoice-form").addEventListener("submit", async functio
         return;
     }
 
-    // Convertir BNS a dirección Stacks (insensible a mayúsculas)
+    // Convertir BNS a dirección Stacks si es un nombre .btc
     if (stacksAddress.endsWith(".btc")) {
         try {
             const response = await fetch(`https://api.hiro.so/v1/names/${stacksAddress.toLowerCase()}`);
@@ -31,50 +31,55 @@ document.getElementById("invoice-form").addEventListener("submit", async functio
     generateInvoice(token, amount, description, stacksAddress);
 });
 
-function generateInvoice(token, amount, description, stacksAddress) {
+async function generateInvoice(token, amount, description, stacksAddress) {
     const invoiceContainer = document.getElementById("invoice-container");
-    invoiceContainer.innerHTML = ""; // Limpiar antes de generar
+    invoiceContainer.style.display = "block"; // Mostrar el contenedor
+    invoiceContainer.innerHTML = ""; // Limpiar antes de generar una nueva factura
 
     const canvas = document.createElement("canvas");
     canvas.width = 400;
     canvas.height = 600;
     const ctx = canvas.getContext("2d");
 
+    // Fondo blanco para la factura
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     // Estilos de texto
     ctx.fillStyle = "#000";
     ctx.font = "20px Arial";
     ctx.textAlign = "left";
 
-    // Título con margen superior
+    // Título de la factura
     ctx.font = "bold 24px Arial";
     ctx.fillText("Stacks Invoice", 120, 50);
 
-    // Datos alineados arriba
+    // Información de la factura
     ctx.font = "18px Arial";
     ctx.fillText(`Token: ${token}`, 30, 100);
     ctx.fillText(`Amount: ${amount}`, 30, 140);
     ctx.fillText(`Description:`, 30, 180);
     ctx.fillText(description, 30, 210);
 
-    // Dirección completa, ajustando líneas si es muy larga
+    // Dirección Stacks con ajuste de líneas si es muy larga
     const maxWidth = 340;
     const addressLines = breakText(ctx, `Address: ${stacksAddress}`, maxWidth);
     addressLines.forEach((line, index) => {
         ctx.fillText(line, 30, 250 + index * 30);
     });
 
-    // Generar y agregar QR
-    QRCode.toCanvas(stacksAddress, { width: 200 }, function (error, qrCanvas) {
-        if (error) console.error(error);
-        ctx.drawImage(qrCanvas, 100, 350);
+    try {
+        // Generar el código QR y dibujarlo en el canvas
+        const qrCanvas = await generateQRCode(stacksAddress);
+        ctx.drawImage(qrCanvas, 100, 350, 200, 200);
 
-        // Mostrar la factura en pantalla
+        // Crear la imagen de la factura y mostrarla
         const img = new Image();
         img.src = canvas.toDataURL();
         img.style.width = "100%";
         invoiceContainer.appendChild(img);
 
-        // Botón Pay Now
+        // Botón "Pay Now"
         const payNowBtn = document.createElement("button");
         payNowBtn.textContent = "Pay Now";
         payNowBtn.onclick = function () {
@@ -82,7 +87,7 @@ function generateInvoice(token, amount, description, stacksAddress) {
         };
         invoiceContainer.appendChild(payNowBtn);
 
-        // Botón Descargar imagen
+        // Botón "Download Invoice"
         const downloadBtn = document.createElement("button");
         downloadBtn.textContent = "Download Invoice";
         downloadBtn.onclick = function () {
@@ -92,10 +97,24 @@ function generateInvoice(token, amount, description, stacksAddress) {
             link.click();
         };
         invoiceContainer.appendChild(downloadBtn);
+
+    } catch (error) {
+        console.error("Error generating QR code:", error);
+        alert("Error generating QR code. Please try again.");
+    }
+}
+
+// Función para generar un código QR y devolverlo como un canvas
+function generateQRCode(data) {
+    return new Promise((resolve, reject) => {
+        QRCode.toCanvas(data, { width: 200 }, function (error, qrCanvas) {
+            if (error) reject(error);
+            else resolve(qrCanvas);
+        });
     });
 }
 
-// Función para dividir texto largo en líneas
+// Función para dividir texto largo en líneas dentro del canvas
 function breakText(ctx, text, maxWidth) {
     const words = text.split(" ");
     let lines = [];
