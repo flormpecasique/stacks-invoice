@@ -53,7 +53,7 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
     ctx.textAlign = "left";  
 
     // Título con margen superior  
-    ctx.font = "bold 18px Arial";  
+    ctx.font = "bold 20px Arial";  
     ctx.fillText("Stacks Invoice", 120, 50);  
 
     // Datos alineados arriba  
