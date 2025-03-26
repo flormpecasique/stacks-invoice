@@ -8,4 +8,4 @@
 - Simple and **professional invoice design**  
 - Easy **sharing and download** options  
 
-Each invoice includes a QR code that can be scanned with any Stacks-compatible wallet for easy payments.
+Each invoice includes a QR code that can be scanned with any Stacks-compatible wallet. 
