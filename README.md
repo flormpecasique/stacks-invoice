@@ -7,6 +7,3 @@
 - Automatic **QR code generation** for easy payments  
 - Simple and **professional invoice design**  
 - Easy **sharing and download** options  
-- No need to expose your **Stacks wallet address**  
-
-This tool provides a seamless, decentralized solution for managing crypto payments on the Stacks blockchain.
