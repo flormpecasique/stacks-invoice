@@ -10,3 +10,6 @@
 
 Each invoice includes a QR code that can be scanned with any Stacks-compatible wallet. 
 
+<div style="position:relative;padding-bottom:56.25%;"> <iframe style="width:100%;height:100%;position:absolute;left:0px;top:0px" src="https://embed.app.guidde.com/playbooks/xzpbVMhwmpp6SENqHBZZgm" title="Stacks Invoice Generator by flor.btc" frameborder="0" referrerpolicy="unsafe-url" allowfullscreen="true" allow="clipboard-write" sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts allow-forms allow-same-origin allow-presentation"></iframe> </div>
+O
+
