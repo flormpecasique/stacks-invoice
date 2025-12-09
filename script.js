@@ -85,13 +85,13 @@ async function generateInvoice(token, amount, description, stacksAddress, bnsNam
         const buttonsContainer = document.createElement("div");
         buttonsContainer.className = "buttons-container";
 
-        // Pay Now
-        const payNowBtn = document.createElement("button");
+        // Pay Now como enlace <a> para abrir wallet
+        const payNowBtn = document.createElement("a");
         payNowBtn.textContent = "Pay Now";
         payNowBtn.id = "pay-now";
-        payNowBtn.onclick = function () {
-            window.open(stacksPayLink, "_blank"); // Abre wallet compatible
-        };
+        payNowBtn.href = stacksPayLink;
+        payNowBtn.target = "_self"; // Permite que el OS capture el URI
+        payNowBtn.style = "display:inline-block; padding:12px 20px; background:#fc6532; color:#fff; border-radius:5px; text-align:center; text-decoration:none; cursor:pointer; width:150px;";
 
         // Download Invoice
         const downloadBtn = document.createElement("button");
