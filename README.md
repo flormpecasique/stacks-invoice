@@ -77,3 +77,16 @@ Distribute the invoice via various sharing options.
 This guide covered how to efficiently create invoices using Stacks Invoice Generator. From selecting the currency to sharing the invoice, you can now streamline your invoicing process with ease.
 
 [Powered by **guidde**](https://www.guidde.com)
+
+
+
+---
+
+## 🔐 Security Considerations
+
+- No private keys are stored
+- No wallet connection required
+- Public read-only APIs
+- User input validation
+
+---
