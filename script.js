@@ -88,27 +88,27 @@ function buildStacksPayUrl({ recipient, token, amount, description, invoiceNumbe
   // Convert human amount → base units (integer, no decimals)
   const baseAmount = Math.round(parseFloat(amount) * Math.pow(10, cfg.decimals)).toString();
 
-  const params = {
-    operation:     'invoice',
-    recipient,
-    token:         cfg.contract,
-    amount:        baseAmount,
-    description:   description || '',
-    invoiceNumber: invoiceNumber || '',
-  };
-  if (dueDate) params.dueDate = dueDate;
+  // Format verified against stacks-pay SDK v0.0.4:
+  // 1. Build full URL: web+stxpay://invoice?recipient=...&token=...&amount=...
+  // 2. Bech32m-encode the whole string with HRP "stx" → stx1...
+  const p = new URLSearchParams();
+  p.set('recipient',   recipient);
+  p.set('description', (description || 'Invoice payment').substring(0, 80));
+  p.set('spId',        invoiceNumber || 'INV');   // required by SDK
+  p.set('token',       cfg.contract);
+  p.set('amount',      baseAmount);
+  if (dueDate) p.set('dueDate', dueDate);
 
-  // Remove empty values
-  Object.keys(params).forEach(k => { if (!params[k]) delete params[k]; });
+  const rawUrl = 'web+stxpay://invoice?' + p.toString();
 
-  const queryString = new URLSearchParams(params).toString();
-
-  // Encode query string bytes → 5-bit groups → Bech32m
-  const bytes   = Array.from(new TextEncoder().encode(queryString));
+  // Bech32m-encode the full URL string with HRP "stx"
+  const bytes   = Array.from(new TextEncoder().encode(rawUrl));
   const bits5   = _spConvertBits(bytes, 8, 5);
-  const encoded = _bech32mEncode('stxpay', bits5);
+  const encoded = _bech32mEncode('stx', bits5);
 
-  return `web+stx:${encoded}`;
+  // encoded = stx1... (for QR codes and copy)
+  // rawUrl  = web+stxpay://... (for Pay Now protocol handler)
+  return { encoded, rawUrl };
 }
 
 
@@ -457,8 +457,10 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
   /* ---- META ROW (invoice ID + date) ---- */
   const invoiceId = genId();
 
-  // Build the StacksPay payment URL (SIP-029) — used for QR + Pay Now button
-  const stacksPayUrl = buildStacksPayUrl({
+  // Build StacksPay URL — verified format from stacks-pay SDK v0.0.4
+  // encoded = stx1... for QR codes and copy
+  // rawUrl  = web+stxpay://... for Pay Now protocol handler
+  const { encoded: stacksPayEncoded, rawUrl: stacksPayRaw } = buildStacksPayUrl({
     recipient:     address,
     token,
     amount,
@@ -563,7 +565,7 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
 
   // Generate QR code
   const qrSize = 150;
-  const qrCanvas = await makeQR(stacksPayUrl, qrSize);
+  const qrCanvas = await makeQR(stacksPayEncoded, qrSize);
   ctx.drawImage(qrCanvas, PAD, y, qrSize, qrSize);
 
   // Subtle QR border
@@ -658,8 +660,9 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
 
   // Cache for download/share
   window._invoiceData = imgData;
-  window._stacksPayUrl = stacksPayUrl;
-  wireButtons(imgData, stacksPayUrl);
+  window._stacksPayEncoded = stacksPayEncoded;
+  window._stacksPayRaw = stacksPayRaw;
+  wireButtons(imgData, stacksPayEncoded, stacksPayRaw);
 }
 
 /* =========================================
@@ -737,7 +740,7 @@ function formatDate(dateStr) {
 /* =========================================
    ACTION BUTTONS
    ========================================= */
-function wireButtons(imgData, stacksPayUrl) {
+function wireButtons(imgData, stacksPayEncoded, stacksPayRaw) {
   const dlBtn    = document.getElementById('btn-download');
   const payBtn   = document.getElementById('btn-paynow');
   const shareBtn = document.getElementById('btn-share');
@@ -759,20 +762,19 @@ function wireButtons(imgData, stacksPayUrl) {
   // Populate + show the StacksPay link block
   const urlInput   = document.getElementById('paynow-url');
   const paynowWrap = document.getElementById('paynow-wrap');
-  urlInput.value   = stacksPayUrl;
+  urlInput.value   = stacksPayEncoded;
   paynowWrap.style.display = 'block';
 
-  // Pay Now — fire a hidden <a> with the web+stx: href.
-  // This triggers the OS protocol handler without navigating the page.
-  // If no wallet is installed the browser silently ignores it (no error page).
+  // Pay Now — fires web+stxpay:// protocol handler (opens Leather/Xverse if installed).
+  // Uses the un-encoded URL (not stx1...) because that's the actual URI scheme.
+  // If no compatible wallet is installed, the tap does nothing (no error).
   newPay.addEventListener('click', () => {
     const a = document.createElement('a');
-    a.href = stacksPayUrl;
-    a.style.cssText = 'position:absolute;opacity:0;pointer-events:none';
+    a.href = stacksPayRaw;
+    a.style.cssText = 'position:fixed;opacity:0;pointer-events:none;top:0;left:0';
     document.body.appendChild(a);
     a.click();
-    // Clean up after a tick so the click has time to fire
-    setTimeout(() => document.body.removeChild(a), 300);
+    setTimeout(() => { if (a.parentNode) document.body.removeChild(a); }, 500);
   });
 
   // Copy StacksPay link — 3-layer fallback
@@ -782,7 +784,7 @@ function wireButtons(imgData, stacksPayUrl) {
     // Layer 1: modern Clipboard API (requires HTTPS, works on desktop + iOS 13.4+)
     if (navigator.clipboard && navigator.clipboard.writeText) {
       try {
-        await navigator.clipboard.writeText(stacksPayUrl);
+        await navigator.clipboard.writeText(stacksPayEncoded);
         success = true;
       } catch { /* try next */ }
     }
@@ -792,7 +794,7 @@ function wireButtons(imgData, stacksPayUrl) {
     if (!success) {
       try {
         const ta = document.createElement('textarea');
-        ta.value = stacksPayUrl;
+        ta.value = stacksPayEncoded;
         // Must be visible + in viewport for iOS to allow selection
         ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;opacity:0;border:0;padding:0';
         document.body.appendChild(ta);
@@ -806,7 +808,7 @@ function wireButtons(imgData, stacksPayUrl) {
     // Layer 3: native share of just the text (last resort on mobile)
     if (!success && navigator.share) {
       try {
-        await navigator.share({ title: 'StacksPay link', text: stacksPayUrl });
+        await navigator.share({ title: 'StacksPay link', text: stacksPayEncoded });
         success = true;
       } catch { /* silent */ }
     }
