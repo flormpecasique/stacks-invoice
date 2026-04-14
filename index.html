@@ -1,59 +1,343 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stacks Invoice Generator</title>
-    <script src="https://cdn.jsdelivr.net/npm/@stacks/stacking@2.0.0/dist/stacks.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-    <script src="https://cdn.walletconnect.org/walletconnect.min.js"></script>
-    
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Create professional crypto invoices for STX, sBTC, NOT, WELSH, LEO and ALEX in seconds. Free, private, no signup required. Built for the Stacks ecosystem.">
+  <meta name="keywords" content="stacks invoice, STX invoice, crypto invoice, sBTC invoice, web3 invoicing, bitcoin layer 2, stacks blockchain, freelance crypto">
+  <meta name="author" content="flor.btc">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#080810">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Stacks Invoice — Crypto Invoicing for Web3 Freelancers">
+  <meta property="og:description" content="Generate professional invoices in STX, sBTC and Stacks tokens instantly. No signup, no fees, QR code included.">
+  <meta property="og:url" content="https://stacks-invoice.vercel.app">
+  <meta property="og:site_name" content="Stacks Invoice">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Stacks Invoice — Crypto Invoicing for Web3">
+  <meta name="twitter:description" content="Professional invoices for STX, sBTC and Stacks tokens. Instant download, QR code included.">
+  <meta name="twitter:creator" content="@florbtc">
+
+  <title>Stacks Invoice — Create Crypto Invoices Instantly</title>
+  <link rel="canonical" href="https://stacks-invoice.vercel.app">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- QR Library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" defer></script>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Stacks Invoice Generator",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Web",
+    "description": "Create professional crypto invoices for Stacks ecosystem tokens including STX, sBTC, NOT, WELSH, LEO and ALEX. Includes QR code for wallet payments.",
+    "url": "https://stacks-invoice.vercel.app",
+    "author": {
+      "@type": "Person",
+      "name": "flor.btc"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "featureList": ["QR Code Generation", "PDF Download", "BNS Name Support", "Multi-token Support", "WhatsApp Sharing"],
+    "screenshot": "https://stacks-invoice.vercel.app/og-image.png"
+  }
+  </script>
 </head>
 <body>
+
+  <!-- ===================== HEADER / HERO ===================== -->
+  <header class="hero" role="banner">
     <div class="container">
-        <h1>Stacks Invoice Generator</h1>
-        <p>Create and share invoices in STX or sBTC easily</p>
 
-        <form id="invoice-form">
-            <label for="token">Choose Token:</label>
-            <select id="token" required>
-                <option value="STX">STX</option>
-                <option value="sBTC">sBTC</option>
-                <option value="NOT">NOT</option>
-                <option value="WELSH">WELSH</option>
-                <option value="LEO">LEO</option>
-                <option value="ALEX">ALEX</option>
-            </select>
-
-            <label for="amount">Amount:</label>
-            <input type="text" id="amount" placeholder="Enter amount" required 
-                   pattern="[0-9]+([.,][0-9]+)?" inputmode="decimal">
-
-            <label for="description">Description:</label>
-            <input type="text" id="description" placeholder="What is this for?" required>
-
-            <label for="stacks-address">Stacks Address:</label>
-            <input type="text" id="stacks-address" placeholder="Your Stacks address" required>
-
-            <button type="submit" id="generate-invoice">Generate Invoice</button>
-        </form>
-
-        <div id="invoice-container" style="display: none;">
-            <canvas id="invoice-canvas"></canvas>
-
-            <!-- Contenedor de botones -->
-            <div class="buttons-container">
-                <button id="pay-now">Share</button>
-                <button id="download-invoice">Download Invoice</button>
-            </div>
+      <nav class="nav" role="navigation" aria-label="Main navigation">
+        <a href="/" class="logo" aria-label="Stacks Invoice Home">
+          <span class="logo-icon" aria-hidden="true">Ӿ</span>
+          <span class="logo-text">Stacks Invoice</span>
+        </a>
+        <div class="nav-actions">
+          <span class="badge" aria-label="Free tool">Free</span>
+          <button class="lang-toggle" id="lang-toggle" aria-label="Switch language" type="button">
+            <span id="lang-label">ES</span>
+          </button>
         </div>
+      </nav>
+
+      <div class="hero-content">
+        <div class="hero-badge" role="note">
+          <span aria-hidden="true">✦</span>
+          <span data-i18n="heroBadge">Web3 Native Invoicing</span>
+        </div>
+
+        <h1 class="hero-title">
+          <span data-i18n="heroTitleLine1">Create Crypto Invoices</span><br>
+          <em data-i18n="heroTitleLine2">in Seconds</em>
+        </h1>
+
+        <p class="hero-subtitle" data-i18n="heroSubtitle">
+          Professional invoices for STX, sBTC and Stacks tokens. No signup. No fees. Instant download.
+        </p>
+
+        <div class="hero-tokens" role="list" aria-label="Supported tokens">
+          <span class="token-chip" role="listitem">STX</span>
+          <span class="token-chip" role="listitem">sBTC</span>
+          <span class="token-chip" role="listitem">NOT</span>
+          <span class="token-chip" role="listitem">WELSH</span>
+          <span class="token-chip" role="listitem">LEO</span>
+          <span class="token-chip" role="listitem">ALEX</span>
+        </div>
+
+        <a href="#tool" class="hero-cta" data-i18n="heroCta">Create your invoice ↓</a>
+      </div>
+
     </div>
+  </header>
 
-    <footer>
-        <p>© 2025 Stacks Invoice Generator by flor.btc</p>
-    </footer>
+  <!-- ===================== MAIN TOOL ===================== -->
+  <main id="tool" class="main-section" role="main">
+    <div class="container">
 
-    <script src="script.js"></script>
+      <div class="tool-grid">
+
+        <!-- LEFT: FORM -->
+        <section class="card form-card" aria-labelledby="form-heading">
+          <h2 id="form-heading" class="card-label" data-i18n="formLabel">Invoice Details</h2>
+
+          <!-- Token Selector -->
+          <div class="form-group">
+            <label data-i18n="labelToken">Token</label>
+            <div class="token-selector" role="group" aria-label="Select token">
+              <button class="token-btn active" data-token="STX" type="button" aria-pressed="true">
+                <span class="t-icon" aria-hidden="true">Ӿ</span> STX
+              </button>
+              <button class="token-btn" data-token="sBTC" type="button" aria-pressed="false">
+                <span class="t-icon" aria-hidden="true">₿</span> sBTC
+              </button>
+              <button class="token-btn" data-token="NOT" type="button" aria-pressed="false">NOT</button>
+              <button class="token-btn" data-token="WELSH" type="button" aria-pressed="false">WELSH</button>
+              <button class="token-btn" data-token="LEO" type="button" aria-pressed="false">LEO</button>
+              <button class="token-btn" data-token="ALEX" type="button" aria-pressed="false">ALEX</button>
+            </div>
+            <input type="hidden" id="selected-token" value="STX">
+          </div>
+
+          <!-- Names Row -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="from-name" data-i18n="labelFrom">Your Name / Company</label>
+              <input type="text" id="from-name" placeholder="flor.btc" autocomplete="name" spellcheck="false">
+            </div>
+            <div class="form-group">
+              <label for="client-name">
+                <span data-i18n="labelClient">Client</span>
+                <span class="opt" data-i18n="optional">(optional)</span>
+              </label>
+              <input type="text" id="client-name" placeholder="Client Co." autocomplete="organization">
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <label for="description" data-i18n="labelDescription">Description</label>
+            <input type="text" id="description" placeholder="Web design · April 2026" required>
+          </div>
+
+          <!-- Amount + Date Row -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="amount" data-i18n="labelAmount">Amount</label>
+              <div class="input-wrap">
+                <input type="text" id="amount" placeholder="0.00" inputmode="decimal"
+                       pattern="[0-9]+([.,][0-9]+)?" autocomplete="off" required>
+                <span class="input-badge" id="amount-token">STX</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="invoice-date" data-i18n="labelDate">Date</label>
+              <input type="date" id="invoice-date">
+            </div>
+          </div>
+
+          <!-- Address -->
+          <div class="form-group">
+            <label for="stacks-address" data-i18n="labelAddress">Stacks Address or BNS</label>
+            <input type="text" id="stacks-address" placeholder="SP... or yourname.btc"
+                   class="mono" spellcheck="false" autocomplete="off" required>
+          </div>
+
+          <!-- Note -->
+          <div class="form-group">
+            <label for="invoice-note">
+              <span data-i18n="labelNote">Note</span>
+              <span class="opt" data-i18n="optional">(optional)</span>
+            </label>
+            <input type="text" id="invoice-note" placeholder="Due in 7 days · Thank you!">
+          </div>
+
+          <!-- Error -->
+          <div id="error-msg" class="error-msg" role="alert" aria-live="polite" style="display:none"></div>
+
+          <!-- Submit -->
+          <button type="button" id="generate-btn" class="btn-primary">
+            <span data-i18n="btnGenerate">Generate Invoice</span>
+            <span class="btn-arr" aria-hidden="true">→</span>
+          </button>
+        </section>
+
+        <!-- RIGHT: PREVIEW -->
+        <section class="card preview-card" aria-labelledby="preview-heading">
+          <h2 id="preview-heading" class="card-label" data-i18n="previewLabel">Preview</h2>
+
+          <div id="preview-empty" class="preview-empty" aria-hidden="false">
+            <div class="preview-empty-icon" aria-hidden="true">📄</div>
+            <p data-i18n="previewEmpty">Your invoice will appear here</p>
+          </div>
+
+          <div id="invoice-output" style="display:none" aria-live="polite">
+            <img id="invoice-img" alt="Generated Stacks invoice with QR code" style="width:100%;border-radius:8px;display:block;">
+
+            <div class="action-row">
+              <button class="act-btn act-primary" id="btn-download" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span data-i18n="btnDownload">Download</span>
+              </button>
+              <button class="act-btn act-ghost" id="btn-share" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                </svg>
+                <span data-i18n="btnShare">Share</span>
+              </button>
+              <button class="act-btn act-whatsapp" id="btn-whatsapp" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                <span>WhatsApp</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ===================== FEATURES ===================== -->
+  <section class="features-section" aria-labelledby="features-heading">
+    <div class="container">
+      <h2 id="features-heading" class="sr-only">Features</h2>
+      <div class="features-grid">
+        <article class="feat-card">
+          <div class="feat-icon" aria-hidden="true">⚡</div>
+          <h3 data-i18n="feat1Title">Instant Generation</h3>
+          <p data-i18n="feat1Desc">Professional invoices ready in under 3 seconds. No waiting, no loading screens.</p>
+        </article>
+        <article class="feat-card">
+          <div class="feat-icon" aria-hidden="true">🔒</div>
+          <h3 data-i18n="feat2Title">No Wallet Required</h3>
+          <p data-i18n="feat2Desc">Enter your address only. No private keys stored, no wallet connection. 100% private.</p>
+        </article>
+        <article class="feat-card">
+          <div class="feat-icon" aria-hidden="true">📱</div>
+          <h3 data-i18n="feat3Title">QR Code Included</h3>
+          <p data-i18n="feat3Desc">Every invoice has a scannable QR code for any Stacks-compatible wallet payment.</p>
+        </article>
+        <article class="feat-card">
+          <div class="feat-icon" aria-hidden="true">🌍</div>
+          <h3 data-i18n="feat4Title">6 Tokens Supported</h3>
+          <p data-i18n="feat4Desc">STX, sBTC, NOT, WELSH, LEO, ALEX — the complete Stacks ecosystem in one tool.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FAQ ===================== -->
+  <section class="faq-section" aria-labelledby="faq-heading">
+    <div class="container">
+      <h2 id="faq-heading" class="section-title" data-i18n="faqTitle">Frequently Asked Questions</h2>
+
+      <div class="faq-list" itemscope itemtype="https://schema.org/FAQPage">
+
+        <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+          <summary itemprop="name" data-i18n="faq1Q">Is this free to use?</summary>
+          <div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+            <p itemprop="text" data-i18n="faq1A">Yes, completely free. No registration, no fees, no limits. Generate as many invoices as you need, forever.</p>
+          </div>
+        </details>
+
+        <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+          <summary itemprop="name" data-i18n="faq2Q">Is my wallet address secure?</summary>
+          <div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+            <p itemprop="text" data-i18n="faq2A">Your address is only used locally in your browser to generate the QR code. We never store, transmit, or log any of your data.</p>
+          </div>
+        </details>
+
+        <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+          <summary itemprop="name" data-i18n="faq3Q">Can I use a BNS name instead of an address?</summary>
+          <div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+            <p itemprop="text" data-i18n="faq3A">Yes! Enter your .btc name (e.g. flor.btc) and it will automatically resolve to your Stacks address using the Hiro public API.</p>
+          </div>
+        </details>
+
+        <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+          <summary itemprop="name" data-i18n="faq4Q">What tokens are supported?</summary>
+          <div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+            <p itemprop="text" data-i18n="faq4A">Currently: STX (native token), sBTC (Bitcoin on Stacks), NOT (Notstrich), WELSH, LEO, and ALEX. More tokens can be added — open source contributions welcome.</p>
+          </div>
+        </details>
+
+        <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+          <summary itemprop="name" data-i18n="faq5Q">How does the QR code payment work?</summary>
+          <div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+            <p itemprop="text" data-i18n="faq5A">The QR code encodes your Stacks wallet address. When scanned with any Stacks-compatible wallet (Leather, Xverse), it pre-fills the recipient field for a faster payment experience.</p>
+          </div>
+        </details>
+
+        <details class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+          <summary itemprop="name" data-i18n="faq6Q">Can I use this on mobile?</summary>
+          <div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+            <p itemprop="text" data-i18n="faq6A">Absolutely. The tool is built mobile-first and works seamlessly on all screen sizes. You can generate and share invoices directly from your phone.</p>
+          </div>
+        </details>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <span class="logo-icon" aria-hidden="true">Ӿ</span>
+          <span>Stacks Invoice</span>
+        </div>
+        <p class="footer-copy">
+          Built by <a href="https://twitter.com/florbtc" target="_blank" rel="noopener noreferrer">flor.btc</a>
+          · Open source · Stacks ecosystem
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
 </body>
 </html>
