@@ -564,6 +564,88 @@ input[type="date"] { color-scheme: dark; cursor: pointer; }
 .footer-copy a { color: var(--accent); text-decoration: none; }
 .footer-copy a:hover { text-decoration: underline; }
 
+
+/* ---- PAY NOW BUTTON ---- */
+.act-paynow {
+  background: linear-gradient(135deg, #080810 0%, #1a1a30 100%);
+  color: #FF5500;
+  border-color: rgba(255,85,0,0.35);
+  font-weight: 600;
+}
+.act-paynow:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  background: linear-gradient(135deg, #0e0e1a 0%, #1f1f3a 100%);
+}
+
+/* ---- STACKSPAY LINK BLOCK ---- */
+.paynow-wrap {
+  margin-top: 14px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  animation: fadeUp 0.25s ease forwards;
+}
+
+.paynow-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.paynow-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.paynow-input {
+  flex: 1;
+  font-size: 10px;
+  padding: 8px 10px;
+  color: var(--text-2);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.paynow-input:focus { border-color: var(--accent); }
+
+.paynow-copy {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(255,85,0,0.3);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-b);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--trans);
+  flex-shrink: 0;
+}
+.paynow-copy:hover { background: rgba(255,85,0,0.18); }
+.paynow-copy.copied { background: rgba(37,211,102,0.12); color: var(--green); border-color: rgba(37,211,102,0.3); }
+
+.paynow-hint {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 7px;
+  line-height: 1.4;
+}
+
 /* ---- ANIMATIONS ---- */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px); }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Create professional crypto invoices for STX, sBTC, NOT, WELSH, LEO and ALEX in seconds. Free, private, no signup required. Built for the Stacks ecosystem.">
   <meta name="keywords" content="stacks invoice, STX invoice, crypto invoice, sBTC invoice, web3 invoicing, bitcoin layer 2, stacks blockchain, freelance crypto">
-  <meta name="author" content="Flor Peña | flor.btc">
+  <meta name="author" content="flor.btc">
   <meta name="robots" content="index, follow">
   <meta name="theme-color" content="#080810">
 
@@ -21,7 +21,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Stacks Invoice — Crypto Invoicing for Web3">
   <meta name="twitter:description" content="Professional invoices for STX, sBTC and Stacks tokens. Instant download, QR code included.">
-  <meta name="twitter:creator" content="@flormpecasique">
+  <meta name="twitter:creator" content="@florbtc">
 
   <title>Stacks Invoice — Create Crypto Invoices Instantly</title>
   <link rel="canonical" href="https://stacks-invoice.vercel.app">
@@ -219,6 +219,12 @@
                 </svg>
                 <span data-i18n="btnDownload">Download</span>
               </button>
+              <button class="act-btn act-paynow" id="btn-paynow" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/>
+                </svg>
+                <span data-i18n="btnPayNow">Pay Now</span>
+              </button>
               <button class="act-btn act-ghost" id="btn-share" type="button">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                   <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
@@ -232,6 +238,21 @@
                 </svg>
                 <span>WhatsApp</span>
               </button>
+            </div>
+
+            <!-- StacksPay payment link -->
+            <div id="paynow-wrap" class="paynow-wrap" style="display:none">
+              <label class="paynow-label" data-i18n="payNowLabel">StacksPay link</label>
+              <div class="paynow-row">
+                <input type="text" id="paynow-url" class="paynow-input mono" readonly aria-label="StacksPay payment URL">
+                <button class="paynow-copy" id="btn-copy-link" type="button" aria-label="Copy link">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  </svg>
+                  <span data-i18n="btnCopy">Copy</span>
+                </button>
+              </div>
+              <p class="paynow-hint" data-i18n="payNowHint">Opens in Leather, Xverse or any Stacks wallet</p>
             </div>
           </div>
         </section>
@@ -331,7 +352,7 @@
           <span>Stacks Invoice</span>
         </div>
         <p class="footer-copy">
-          Built by <a href="https://x.com/flormpecasique" target="_blank" rel="noopener noreferrer">flor.btc</a>
+          Built by <a href="https://twitter.com/florbtc" target="_blank" rel="noopener noreferrer">flor.btc</a>
           · Open source · Stacks ecosystem
         </p>
       </div>

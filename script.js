@@ -5,6 +5,113 @@
 
 'use strict';
 
+/* =========================================
+   STACKSPAY PROTOCOL ENGINE (SIP-029)
+   Pure JS · No dependencies · Bech32m
+   ========================================= */
+
+/* --- Bech32m constants --- */
+const _SP_CHARSET   = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l';
+const _SP_GENERATOR = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+const _BECH32M_CONST = 0x2bc830a3;
+
+function _spPolymod(values) {
+  let chk = 1;
+  for (const v of values) {
+    const top = chk >> 25;
+    chk = ((chk & 0x1ffffff) << 5) ^ v;
+    for (let i = 0; i < 5; i++) {
+      if ((top >> i) & 1) chk ^= _SP_GENERATOR[i];
+    }
+  }
+  return chk;
+}
+
+function _spHrpExpand(hrp) {
+  const r = [];
+  for (let i = 0; i < hrp.length; i++) r.push(hrp.charCodeAt(i) >> 5);
+  r.push(0);
+  for (let i = 0; i < hrp.length; i++) r.push(hrp.charCodeAt(i) & 31);
+  return r;
+}
+
+function _spChecksum(hrp, data) {
+  const values = _spHrpExpand(hrp).concat(data, [0,0,0,0,0,0]);
+  const pm = _spPolymod(values) ^ _BECH32M_CONST;
+  const ret = [];
+  for (let i = 0; i < 6; i++) ret.push((pm >> (5 * (5 - i))) & 31);
+  return ret;
+}
+
+function _spConvertBits(data, from, to) {
+  let acc = 0, bits = 0;
+  const ret = [], maxv = (1 << to) - 1;
+  for (const v of data) {
+    acc = (acc << from) | v;
+    bits += from;
+    while (bits >= to) { bits -= to; ret.push((acc >> bits) & maxv); }
+  }
+  if (bits > 0) ret.push((acc << (to - bits)) & maxv);
+  return ret;
+}
+
+function _bech32mEncode(hrp, data5) {
+  const combined = data5.concat(_spChecksum(hrp, data5));
+  return hrp + '1' + combined.map(d => _SP_CHARSET[d]).join('');
+}
+
+/* --- Token config: decimals & SIP-010 contract addresses --- */
+const TOKEN_CONFIG = {
+  STX:   { decimals: 6,  contract: 'STX' },
+  sBTC:  { decimals: 8,  contract: 'SP3DX3H4FEYZJZ586MFBS25ZW3HZDMEW92260R2PR.Wrapped-Bitcoin' },
+  NOT:   { decimals: 6,  contract: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.nope' },
+  WELSH: { decimals: 6,  contract: 'SP3NE50GEXFG9SZGTT51P40X2CKYSZ5CC4ZTZ7A2G.welshcorgicoin-token' },
+  LEO:   { decimals: 6,  contract: 'SP1AY6K3PQV5MRT6988316ZMYY88BSKDNWZB43XS5.leo-token' },
+  ALEX:  { decimals: 8,  contract: 'SP102V8P0F7JX67ARQ77WEA3D3CFB5XW39REDT0AM.token-alex' },
+};
+
+/**
+ * buildStacksPayUrl
+ * Generates a web+stx:stxpay1... URL per SIP-029 spec.
+ *
+ * @param {string} recipient  - Stacks address (SP...)
+ * @param {string} token      - 'STX' | 'sBTC' | 'NOT' | 'WELSH' | 'LEO' | 'ALEX'
+ * @param {string} amount     - Human-readable amount (e.g. "2.5")
+ * @param {string} description
+ * @param {string} invoiceNumber
+ * @param {string} dueDate    - ISO date string YYYY-MM-DD (optional)
+ * @returns {string}          - Full web+stx: URL
+ */
+function buildStacksPayUrl({ recipient, token, amount, description, invoiceNumber, dueDate }) {
+  const cfg = TOKEN_CONFIG[token] || TOKEN_CONFIG.STX;
+
+  // Convert human amount → base units (integer, no decimals)
+  const baseAmount = Math.round(parseFloat(amount) * Math.pow(10, cfg.decimals)).toString();
+
+  const params = {
+    operation:     'invoice',
+    recipient,
+    token:         cfg.contract,
+    amount:        baseAmount,
+    description:   description || '',
+    invoiceNumber: invoiceNumber || '',
+  };
+  if (dueDate) params.dueDate = dueDate;
+
+  // Remove empty values
+  Object.keys(params).forEach(k => { if (!params[k]) delete params[k]; });
+
+  const queryString = new URLSearchParams(params).toString();
+
+  // Encode query string bytes → 5-bit groups → Bech32m
+  const bytes   = Array.from(new TextEncoder().encode(queryString));
+  const bits5   = _spConvertBits(bytes, 8, 5);
+  const encoded = _bech32mEncode('stxpay', bits5);
+
+  return `web+stx:${encoded}`;
+}
+
+
 /* ---- i18n ---- */
 const i18n = {
   en: {
@@ -69,6 +176,10 @@ const i18n = {
     inv_footer: 'stacks-invoice.vercel.app',
     months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
     copied: '✓ Copied!',
+    btnPayNow:    'Pay Now',
+    payNowLabel:  'StacksPay payment link',
+    payNowHint:   'Opens in Leather, Xverse or any Stacks wallet',
+    btnCopy:      'Copy',
   },
   es: {
     heroBadge:    'Facturación Web3 Nativa',
@@ -132,6 +243,10 @@ const i18n = {
     inv_footer: 'stacks-invoice.vercel.app',
     months: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
     copied: '✓ Copiado!',
+    btnPayNow:    'Pagar Ahora',
+    payNowLabel:  'Link de pago StacksPay',
+    payNowHint:   'Se abre en Leather, Xverse o cualquier wallet Stacks',
+    btnCopy:      'Copiar',
   }
 };
 
@@ -341,6 +456,16 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
 
   /* ---- META ROW (invoice ID + date) ---- */
   const invoiceId = genId();
+
+  // Build the StacksPay payment URL (SIP-029) — used for QR + Pay Now button
+  const stacksPayUrl = buildStacksPayUrl({
+    recipient:     address,
+    token,
+    amount,
+    description:   description || 'Invoice payment',
+    invoiceNumber: invoiceId,
+    dueDate:       date || '',
+  });
   const dateStr = formatDate(date || new Date().toISOString().split('T')[0]);
 
   ctx.textAlign = 'right';
@@ -438,7 +563,7 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
 
   // Generate QR code
   const qrSize = 150;
-  const qrCanvas = await makeQR(address, qrSize);
+  const qrCanvas = await makeQR(stacksPayUrl, qrSize);
   ctx.drawImage(qrCanvas, PAD, y, qrSize, qrSize);
 
   // Subtle QR border
@@ -533,7 +658,8 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
 
   // Cache for download/share
   window._invoiceData = imgData;
-  wireButtons(imgData);
+  window._stacksPayUrl = stacksPayUrl;
+  wireButtons(imgData, stacksPayUrl);
 }
 
 /* =========================================
@@ -611,18 +737,49 @@ function formatDate(dateStr) {
 /* =========================================
    ACTION BUTTONS
    ========================================= */
-function wireButtons(imgData) {
+function wireButtons(imgData, stacksPayUrl) {
   const dlBtn    = document.getElementById('btn-download');
+  const payBtn   = document.getElementById('btn-paynow');
   const shareBtn = document.getElementById('btn-share');
   const waBtn    = document.getElementById('btn-whatsapp');
+  const copyBtn  = document.getElementById('btn-copy-link');
 
   // Remove old listeners by cloning
   const newDl    = dlBtn.cloneNode(true);
+  const newPay   = payBtn.cloneNode(true);
   const newShare = shareBtn.cloneNode(true);
   const newWa    = waBtn.cloneNode(true);
+  const newCopy  = copyBtn.cloneNode(true);
   dlBtn.replaceWith(newDl);
+  payBtn.replaceWith(newPay);
   shareBtn.replaceWith(newShare);
   waBtn.replaceWith(newWa);
+  copyBtn.replaceWith(newCopy);
+
+  // Populate + show the StacksPay link block
+  const urlInput   = document.getElementById('paynow-url');
+  const paynowWrap = document.getElementById('paynow-wrap');
+  urlInput.value   = stacksPayUrl;
+  paynowWrap.style.display = 'block';
+
+  // Pay Now — open web+stx: link (opens wallet on mobile, prompts on desktop)
+  newPay.addEventListener('click', () => {
+    window.location.href = stacksPayUrl;
+  });
+
+  // Copy StacksPay link
+  newCopy.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(stacksPayUrl);
+      const origHTML = newCopy.innerHTML;
+      newCopy.textContent = t('copied');
+      newCopy.classList.add('copied');
+      setTimeout(() => { newCopy.innerHTML = origHTML; newCopy.classList.remove('copied'); }, 2200);
+    } catch {
+      urlInput.select();
+      document.execCommand('copy');
+    }
+  });
 
   // Download
   newDl.addEventListener('click', () => {
