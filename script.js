@@ -289,11 +289,18 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
    CANVAS INVOICE RENDERER
    ========================================= */
 async function buildInvoice({ token, amount, description, address, bnsName, fromName, clientName, note, date }) {
+  // Guard: ensure QRCode library is available
+  if (typeof QRCode === 'undefined') {
+    throw new Error('QRCode library not loaded. Reload the page and try again.');
+  }
+
   const DPR = 2; // Retina / high-DPI
   const W = 800;
 
-  // --- Measure content to calculate dynamic height ---
+  // Needs explicit dimensions to measure text accurately
   const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = W;
+  tempCanvas.height = 100;
   const tempCtx = tempCanvas.getContext('2d');
   const descLines = wrapText(tempCtx, description, 440, '400 15px -apple-system,sans-serif');
   const hasNote = !!note;
@@ -347,9 +354,7 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
   ctx.textAlign = 'left';
   ctx.fillStyle = '#FF5500';
   ctx.font = '700 10px -apple-system,"Segoe UI",sans-serif';
-  ctx.letterSpacing = '0.1em';
   ctx.fillText(t('inv_from'), PAD, 118);
-  ctx.letterSpacing = '0';
 
   ctx.fillStyle = '#111120';
   ctx.font = '600 17px -apple-system,"Segoe UI",sans-serif';
