@@ -2,6 +2,8 @@
 
 **Stacks Invoice Generator** is a lightweight and user-friendly tool designed for freelancers, creators, and businesses to generate invoices in $STX or sBTC effortlessly. With a simple interface, users can input payment details, generate an invoice with a QR code, and share it instantly.  
 
+![Preview del proyecto](preview.jpeg)
+
 ### Key Features:  
 - Generate invoices in **$STX, sBTC, NOT, Welsh, LEO or Alex**  
 - Automatic **QR code generation** for easy payments  
