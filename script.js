@@ -762,22 +762,61 @@ function wireButtons(imgData, stacksPayUrl) {
   urlInput.value   = stacksPayUrl;
   paynowWrap.style.display = 'block';
 
-  // Pay Now — open web+stx: link (opens wallet on mobile, prompts on desktop)
+  // Pay Now — fire a hidden <a> with the web+stx: href.
+  // This triggers the OS protocol handler without navigating the page.
+  // If no wallet is installed the browser silently ignores it (no error page).
   newPay.addEventListener('click', () => {
-    window.location.href = stacksPayUrl;
+    const a = document.createElement('a');
+    a.href = stacksPayUrl;
+    a.style.cssText = 'position:absolute;opacity:0;pointer-events:none';
+    document.body.appendChild(a);
+    a.click();
+    // Clean up after a tick so the click has time to fire
+    setTimeout(() => document.body.removeChild(a), 300);
   });
 
-  // Copy StacksPay link
+  // Copy StacksPay link — 3-layer fallback
   newCopy.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(stacksPayUrl);
+    let success = false;
+
+    // Layer 1: modern Clipboard API (requires HTTPS, works on desktop + iOS 13.4+)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(stacksPayUrl);
+        success = true;
+      } catch { /* try next */ }
+    }
+
+    // Layer 2: execCommand via a temporary <textarea> (works on Android WebView,
+    //           older iOS, and any context where Clipboard API is blocked)
+    if (!success) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = stacksPayUrl;
+        // Must be visible + in viewport for iOS to allow selection
+        ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;opacity:0;border:0;padding:0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.setSelectionRange(0, ta.value.length);
+        success = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch { /* try next */ }
+    }
+
+    // Layer 3: native share of just the text (last resort on mobile)
+    if (!success && navigator.share) {
+      try {
+        await navigator.share({ title: 'StacksPay link', text: stacksPayUrl });
+        success = true;
+      } catch { /* silent */ }
+    }
+
+    // Visual feedback
+    if (success) {
       const origHTML = newCopy.innerHTML;
       newCopy.textContent = t('copied');
       newCopy.classList.add('copied');
       setTimeout(() => { newCopy.innerHTML = origHTML; newCopy.classList.remove('copied'); }, 2200);
-    } catch {
-      urlInput.select();
-      document.execCommand('copy');
     }
   });
 
