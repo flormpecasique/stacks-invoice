@@ -658,14 +658,40 @@ function wireButtons(imgData) {
     }
   });
 
-  // WhatsApp
-  newWa.addEventListener('click', () => {
-    const text = encodeURIComponent(
-      lang === 'es'
-        ? '¡Mira mi factura crypto! Creada con Stacks Invoice Generator: https://stacks-invoice.vercel.app'
-        : 'Check out my crypto invoice! Created with Stacks Invoice Generator: https://stacks-invoice.vercel.app'
-    );
-    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener');
+  // WhatsApp — share the actual invoice image via native share sheet (mobile)
+  // or auto-download + open WhatsApp Web on desktop
+  newWa.addEventListener('click', async () => {
+    const origHTML = newWa.innerHTML;
+
+    try {
+      const blob = await (await fetch(imgData)).blob();
+      const file = new File([blob], 'stacks-invoice.png', { type: 'image/png' });
+
+      // Mobile: Web Share API with files → native sheet → user picks WhatsApp
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Stacks Invoice' });
+        return;
+      }
+
+      // Desktop fallback: auto-download the image, then open WhatsApp Web
+      // so the user can attach the saved file manually
+      const a = document.createElement('a');
+      a.download = 'stacks-invoice.png';
+      a.href = imgData;
+      a.click();
+
+      newWa.textContent = lang === 'es' ? '↓ Imagen guardada…' : '↓ Image saved…';
+      setTimeout(() => {
+        newWa.innerHTML = origHTML;
+        window.open('https://web.whatsapp.com', '_blank', 'noopener');
+      }, 1800);
+
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('WhatsApp share error:', err);
+        newWa.innerHTML = origHTML;
+      }
+    }
   });
 }
 
