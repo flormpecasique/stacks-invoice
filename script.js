@@ -85,30 +85,28 @@ const TOKEN_CONFIG = {
 function buildStacksPayUrl({ recipient, token, amount, description, invoiceNumber, dueDate }) {
   const cfg = TOKEN_CONFIG[token] || TOKEN_CONFIG.STX;
 
-  // Convert human amount → base units (integer, no decimals)
+  // Convert human amount to base units
   const baseAmount = Math.round(parseFloat(amount) * Math.pow(10, cfg.decimals)).toString();
 
-  // Format verified against stacks-pay SDK v0.0.4:
-  // 1. Build full URL: web+stxpay://invoice?recipient=...&token=...&amount=...
-  // 2. Bech32m-encode the whole string with HRP "stx" → stx1...
+  // Exact format verified by decoding real SDK output:
+  // "invoice?operation=invoice&recipient=SP...&token=STX&amount=...&description=...&invoiceNumber=..."
   const p = new URLSearchParams();
-  p.set('recipient',   recipient);
-  p.set('description', (description || 'Invoice payment').substring(0, 80));
-  p.set('spId',        invoiceNumber || 'INV');   // required by SDK
-  p.set('token',       cfg.contract);
-  p.set('amount',      baseAmount);
-  if (dueDate) p.set('dueDate', dueDate);
+  p.set('operation',    'invoice');           // SDK includes this in query string too
+  p.set('recipient',    recipient);
+  p.set('token',        cfg.contract);
+  p.set('amount',       baseAmount);
+  if (description)   p.set('description',   description.substring(0, 80));
+  if (invoiceNumber) p.set('invoiceNumber',  invoiceNumber);
+  if (dueDate)       p.set('dueDate',        dueDate);
 
-  const rawUrl = 'web+stxpay://invoice?' + p.toString();
+  const rawForEncoding = 'invoice?' + p.toString();
 
-  // Bech32m-encode the full URL string with HRP "stx"
-  const bytes   = Array.from(new TextEncoder().encode(rawUrl));
-  const bits5   = _spConvertBits(bytes, 8, 5);
-  const encoded = _bech32mEncode('stx', bits5);
+  // Bech32m-encode with HRP "stx"
+  const bytes = Array.from(new TextEncoder().encode(rawForEncoding));
+  const bits5 = _spConvertBits(bytes, 8, 5);
+  const stx1  = _bech32mEncode('stx', bits5);
 
-  // encoded = stx1... (for QR codes and copy)
-  // rawUrl  = web+stxpay://... (for Pay Now protocol handler)
-  return { encoded, rawUrl };
+  return 'web+stx:' + stx1;
 }
 
 
@@ -459,8 +457,8 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
 
   // Build StacksPay URL — verified format from stacks-pay SDK v0.0.4
   // encoded = stx1... for QR codes and copy
-  // rawUrl  = web+stxpay://... for Pay Now protocol handler
-  const { encoded: stacksPayEncoded, rawUrl: stacksPayRaw } = buildStacksPayUrl({
+  
+  const stacksPayUrl = buildStacksPayUrl({
     recipient:     address,
     token,
     amount,
@@ -565,7 +563,7 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
 
   // Generate QR code
   const qrSize = 150;
-  const qrCanvas = await makeQR(stacksPayEncoded, qrSize);
+  const qrCanvas = await makeQR(stacksPayUrl, qrSize);
   ctx.drawImage(qrCanvas, PAD, y, qrSize, qrSize);
 
   // Subtle QR border
@@ -660,9 +658,8 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
 
   // Cache for download/share
   window._invoiceData = imgData;
-  window._stacksPayEncoded = stacksPayEncoded;
-  window._stacksPayRaw = stacksPayRaw;
-  wireButtons(imgData, stacksPayEncoded, stacksPayRaw);
+  window._stacksPayUrl = stacksPayUrl;
+  wireButtons(imgData, stacksPayUrl);
 }
 
 /* =========================================
@@ -740,7 +737,7 @@ function formatDate(dateStr) {
 /* =========================================
    ACTION BUTTONS
    ========================================= */
-function wireButtons(imgData, stacksPayEncoded, stacksPayRaw) {
+function wireButtons(imgData, stacksPayUrl) {
   const dlBtn    = document.getElementById('btn-download');
   const payBtn   = document.getElementById('btn-paynow');
   const shareBtn = document.getElementById('btn-share');
@@ -762,15 +759,15 @@ function wireButtons(imgData, stacksPayEncoded, stacksPayRaw) {
   // Populate + show the StacksPay link block
   const urlInput   = document.getElementById('paynow-url');
   const paynowWrap = document.getElementById('paynow-wrap');
-  urlInput.value   = stacksPayEncoded;
+  urlInput.value   = stacksPayUrl;
   paynowWrap.style.display = 'block';
 
-  // Pay Now — fires web+stxpay:// protocol handler (opens Leather/Xverse if installed).
+  // Pay Now — opens web+stx:stx1... protocol handler (Leather/Xverse if installed)
   // Uses the un-encoded URL (not stx1...) because that's the actual URI scheme.
   // If no compatible wallet is installed, the tap does nothing (no error).
   newPay.addEventListener('click', () => {
     const a = document.createElement('a');
-    a.href = stacksPayRaw;
+    a.href = stacksPayUrl;
     a.style.cssText = 'position:fixed;opacity:0;pointer-events:none;top:0;left:0';
     document.body.appendChild(a);
     a.click();
@@ -784,7 +781,7 @@ function wireButtons(imgData, stacksPayEncoded, stacksPayRaw) {
     // Layer 1: modern Clipboard API (requires HTTPS, works on desktop + iOS 13.4+)
     if (navigator.clipboard && navigator.clipboard.writeText) {
       try {
-        await navigator.clipboard.writeText(stacksPayEncoded);
+        await navigator.clipboard.writeText(stacksPayUrl);
         success = true;
       } catch { /* try next */ }
     }
@@ -794,7 +791,7 @@ function wireButtons(imgData, stacksPayEncoded, stacksPayRaw) {
     if (!success) {
       try {
         const ta = document.createElement('textarea');
-        ta.value = stacksPayEncoded;
+        ta.value = stacksPayUrl;
         // Must be visible + in viewport for iOS to allow selection
         ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;opacity:0;border:0;padding:0';
         document.body.appendChild(ta);
@@ -808,7 +805,7 @@ function wireButtons(imgData, stacksPayEncoded, stacksPayRaw) {
     // Layer 3: native share of just the text (last resort on mobile)
     if (!success && navigator.share) {
       try {
-        await navigator.share({ title: 'StacksPay link', text: stacksPayEncoded });
+        await navigator.share({ title: 'StacksPay link', text: stacksPayUrl });
         success = true;
       } catch { /* silent */ }
     }
