@@ -607,3 +607,5 @@ input[type="date"] { color-scheme: dark; cursor: pointer; }
 @supports (padding: env(safe-area-inset-bottom)) {
   .footer { padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
 }
+
+

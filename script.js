@@ -707,3 +707,4 @@ async function copyToClipboard(blob, btn) {
       : 'Use the Download button to save your invoice.');
   }
 }
+
