@@ -42,7 +42,7 @@ const i18n = {
     faq2Q: 'Is my wallet address secure?',
     faq2A: 'Your address is only used locally in your browser to generate the QR code. We never store, transmit, or log any of your data.',
     faq3Q: 'Can I use a BNS name instead of an address?',
-    faq3A: 'Yes! Enter your .btc name (e.g. flor.btc) and it will automatically resolve to your Stacks address using the Hiro public API.',
+    faq3A: 'Yes! Enter your .btc name (e.g. flor.btc) and it will automatically resolve to your Stacks address using the on-chain BNS contract.',
     faq4Q: 'What tokens are supported?',
     faq4A: 'Currently: STX (native token), sBTC (Bitcoin on Stacks), NOT (Notstrich), WELSH, LEO, and ALEX. Open source — contributions welcome.',
     faq5Q: 'How does the QR code payment work?',
@@ -52,7 +52,7 @@ const i18n = {
     errAmount:  'Please enter a valid amount.',
     errAddress: 'Please enter a Stacks address or BNS name.',
     errBns:     'Could not resolve BNS name. Please check it and try again.',
-    errBnsApi:  'Error connecting to Hiro API. Check your connection.',
+    errBnsApi:  'Error connecting to the Stacks network. Check your connection.',
     errGeneral: 'Something went wrong. Please try again.',
     inv_title:  'INVOICE',
     inv_from:   'FROM',
@@ -105,7 +105,7 @@ const i18n = {
     faq2Q: '¿Es segura mi dirección de wallet?',
     faq2A: 'Tu dirección solo se usa localmente en tu navegador para generar el QR. No almacenamos ni transmitimos ningún dato.',
     faq3Q: '¿Puedo usar un nombre BNS en lugar de una dirección?',
-    faq3A: 'Sí. Ingresa tu nombre .btc (ej. flor.btc) y se resolverá automáticamente usando la API pública de Hiro.',
+    faq3A: 'Sí. Ingresa tu nombre .btc (ej. flor.btc) y se resolverá automáticamente usando el contrato BNS on-chain.',
     faq4Q: '¿Qué tokens están soportados?',
     faq4A: 'Actualmente: STX, sBTC, NOT, WELSH, LEO y ALEX. Proyecto open source — contribuciones bienvenidas.',
     faq5Q: '¿Cómo funciona el pago por QR?',
@@ -115,7 +115,7 @@ const i18n = {
     errAmount:  'Por favor ingresa un monto válido.',
     errAddress: 'Por favor ingresa una dirección Stacks o nombre BNS.',
     errBns:     'No se pudo resolver el nombre BNS. Verifica que sea correcto.',
-    errBnsApi:  'Error al conectar con la API de Hiro. Verifica tu conexión.',
+    errBnsApi:  'Error al conectar con la red de Stacks. Verifica tu conexión.',
     errGeneral: 'Algo salió mal. Por favor intenta de nuevo.',
     inv_title:  'FACTURA',
     inv_from:   'DE',
@@ -249,22 +249,36 @@ document.getElementById('generate-btn').addEventListener('click', async () => {
 
   btn.classList.add('loading');
 
+  /* ---- BNS Resolution via on-chain Clarity contract ----
+     Hiro deprecated /v1/names/ in late 2026. We now call the BNS contract
+     directly via /v2/contracts/call-read/ — no API key needed, public endpoint.
+     Requires bns-resolver.js loaded before this script (sets window.resolveBnsName).
+  */
   let bnsName = '';
   if (address.toLowerCase().endsWith('.btc')) {
+    const originalName = address.toLowerCase();
     try {
-      const res = await fetch(`https://api.hiro.so/v1/names/${address.toLowerCase()}`);
-      if (!res.ok) throw new Error('not ok');
-      const data = await res.json();
-      if (data?.address) {
-        bnsName = address.toLowerCase();
-        address = data.address;
+      if (typeof window.resolveBnsName !== 'function') {
+        throw new Error('BNS resolver not loaded');
+      }
+      const resolved = await window.resolveBnsName(originalName);
+      if (resolved) {
+        bnsName = originalName;
+        address = resolved;
       } else {
         showError(t('errBns'));
         btn.classList.remove('loading');
         return;
       }
-    } catch {
-      showError(t('errBnsApi'));
+    } catch (err) {
+      console.error('BNS resolution error:', err);
+      // Distinguish "not registered" from "network error" based on message.
+      const msg = String(err?.message || '').toLowerCase();
+      if (msg.includes('not registered') || msg.includes('not found') || msg.includes('invalid')) {
+        showError(t('errBns'));
+      } else {
+        showError(t('errBnsApi'));
+      }
       btn.classList.remove('loading');
       return;
     }
@@ -294,10 +308,9 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
     throw new Error('QRCode library not loaded. Reload the page and try again.');
   }
 
-  const DPR = 2; // Retina / high-DPI
+  const DPR = 2;
   const W = 800;
 
-  // Needs explicit dimensions to measure text accurately
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = W;
   tempCanvas.height = 100;
@@ -322,18 +335,15 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
   ctx.fillStyle = '#080810';
   ctx.fillRect(0, 0, W, 86);
 
-  // Orange accent stripe
   ctx.fillStyle = '#FF5500';
   ctx.fillRect(0, 86, W, 3);
 
-  // Brand
   ctx.fillStyle = '#FFFFFF';
   ctx.font = '700 21px -apple-system,"Segoe UI",sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText('Ӿ  STACKS', PAD, 43);
 
-  // Invoice title (right)
   ctx.fillStyle = '#FF5500';
   ctx.font = '700 21px -apple-system,"Segoe UI",sans-serif';
   ctx.textAlign = 'right';
@@ -379,7 +389,6 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
 
   /* ---- ITEMS TABLE ---- */
   y += 16;
-  // Table header
   ctx.fillStyle = '#F0F0F8';
   fillRoundRect(ctx, PAD, y, W - PAD * 2, 34, 6);
 
@@ -392,13 +401,11 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
 
   y += 50;
 
-  // Description row
   ctx.fillStyle = '#222234';
   ctx.font = '400 15px -apple-system,"Segoe UI",sans-serif';
   ctx.textAlign = 'left';
   descLines.forEach((line, i) => ctx.fillText(line, PAD + 18, y + i * 24));
 
-  // Amount
   ctx.fillStyle = '#111120';
   ctx.font = '600 15px -apple-system,"Segoe UI",sans-serif';
   ctx.textAlign = 'right';
@@ -436,17 +443,14 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
   drawDivider(ctx, PAD, W - PAD, y);
   y += 22;
 
-  // Generate QR code
   const qrSize = 150;
   const qrCanvas = await makeQR(address, qrSize);
   ctx.drawImage(qrCanvas, PAD, y, qrSize, qrSize);
 
-  // Subtle QR border
   ctx.strokeStyle = '#E0E0EE';
   ctx.lineWidth = 1;
   ctx.strokeRect(PAD, y, qrSize, qrSize);
 
-  // Payment details (right of QR)
   const pdX = PAD + qrSize + 28;
   const pdW = W - PAD - pdX - 10;
   let pdY = y + 12;
@@ -505,7 +509,6 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
   ctx.fillStyle = '#0D0D1A';
   ctx.fillRect(0, H - 46, W, 46);
 
-  // Orange left accent
   ctx.fillStyle = '#FF5500';
   ctx.fillRect(0, H - 46, 3, 46);
 
@@ -524,14 +527,13 @@ async function buildInvoice({ token, amount, description, address, bnsName, from
   const img = document.getElementById('invoice-img');
   img.src = imgData;
   img.classList.remove('invoice-reveal');
-  void img.offsetWidth; // force reflow for animation restart
+  void img.offsetWidth;
   img.classList.add('invoice-reveal');
 
   document.getElementById('preview-empty').style.display = 'none';
   const output = document.getElementById('invoice-output');
   output.style.display = 'block';
 
-  // Cache for download/share
   window._invoiceData = imgData;
   wireButtons(imgData);
 }
@@ -616,7 +618,6 @@ function wireButtons(imgData) {
   const shareBtn = document.getElementById('btn-share');
   const waBtn    = document.getElementById('btn-whatsapp');
 
-  // Remove old listeners by cloning
   const newDl    = dlBtn.cloneNode(true);
   const newShare = shareBtn.cloneNode(true);
   const newWa    = waBtn.cloneNode(true);
@@ -624,7 +625,6 @@ function wireButtons(imgData) {
   shareBtn.replaceWith(newShare);
   waBtn.replaceWith(newWa);
 
-  // Download
   newDl.addEventListener('click', () => {
     const a = document.createElement('a');
     a.download = `stacks-invoice-${Date.now()}.png`;
@@ -632,7 +632,6 @@ function wireButtons(imgData) {
     a.click();
   });
 
-  // Native share / clipboard fallback
   newShare.addEventListener('click', async () => {
     try {
       const blob = await (await fetch(imgData)).blob();
@@ -649,7 +648,6 @@ function wireButtons(imgData) {
     } catch (err) {
       if (err.name !== 'AbortError') {
         console.error('Share error:', err);
-        // Try clipboard as last resort
         try {
           const blob2 = await (await fetch(imgData)).blob();
           await copyToClipboard(blob2, newShare);
@@ -658,8 +656,6 @@ function wireButtons(imgData) {
     }
   });
 
-  // WhatsApp — share the actual invoice image via native share sheet (mobile)
-  // or auto-download + open WhatsApp Web on desktop
   newWa.addEventListener('click', async () => {
     const origHTML = newWa.innerHTML;
 
@@ -667,14 +663,11 @@ function wireButtons(imgData) {
       const blob = await (await fetch(imgData)).blob();
       const file = new File([blob], 'stacks-invoice.png', { type: 'image/png' });
 
-      // Mobile: Web Share API with files → native sheet → user picks WhatsApp
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: 'Stacks Invoice' });
         return;
       }
 
-      // Desktop fallback: auto-download the image, then open WhatsApp Web
-      // so the user can attach the saved file manually
       const a = document.createElement('a');
       a.download = 'stacks-invoice.png';
       a.href = imgData;
